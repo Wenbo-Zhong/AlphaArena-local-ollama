@@ -55,16 +55,16 @@ class ProTradingFormatter(logging.Formatter):
         'BG_YELLOW': '\033[43m',
         'BG_BLUE': '\033[44m',
 
-        # DeepSeek 专属品牌色 RGB(41, 148, 255)
-        'DEEPSEEK_BLUE': '\033[38;2;41;148;255m',
+        # 专属品牌色 RGB(41, 148, 255)
+        'BLUE': '\033[38;2;41;148;255m',
     }
 
     # 模块名映射（专业化显示）
     MODULE_NAMES = {
-        '__main__': 'DeepSeek',
-        'alpha_arena_bot': 'DeepSeek',
+        '__main__': 'Ollama',
+        'alpha_arena_bot': 'Ollama',
         'ai_trading_engine': 'AI-ENGINE',
-        'deepseek_client': 'AI-MODEL',
+        'ollama_client': 'AI-MODEL',
         'binance_client': 'EXCHANGE',
         'market_analyzer': 'ANALYZER',
         'risk_manager': 'RISK',
@@ -180,11 +180,11 @@ class ProTradingFormatter(logging.Formatter):
 
         if self.compact:
             # 紧凑格式：HH:MM:SS.fff | MODULE | 消息
-            # DeepSeek专属品牌蓝色显示 RGB(41, 148, 255)
+            # 专属品牌蓝色显示 RGB(41, 148, 255)
             prefix = (
                 f"{self.COLORS['BRIGHT_BLACK']}{timestamp}{self.COLORS['RESET']} "
                 f"{self.COLORS['DIM']}|{self.COLORS['RESET']} "
-                f"{self.COLORS['DEEPSEEK_BLUE']}{module:<8}{self.COLORS['RESET']} "
+                f"{self.COLORS['BLUE']}{module:<8}{self.COLORS['RESET']} "
                 f"{level_color}{level_symbol}{self.COLORS['RESET']} "
             )
             formatted = prefix + message
@@ -418,7 +418,7 @@ if __name__ == "__main__":
     test_logger.info("[SUCCESS] 连接到 Binance Futures API")
     test_logger.info("[MONEY] 账户余额: $21,335.67 (从Binance API实时获取)")
     test_logger.info("[ANALYZE] 交易对: ETHUSDT, SOLUSDT, BNBUSDT")
-    test_logger.info("[AI] 使用模型: DeepSeek Chat V3.1")
+    # test_logger.info("[AI] 使用模型: ")
 
     time.sleep(0.5)
 

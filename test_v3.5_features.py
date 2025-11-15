@@ -105,7 +105,7 @@ def test_config():
 
     # 检查关键配置
     config_items = [
-        ("DeepSeek API Key", os.getenv('DEEPSEEK_API_KEY')),
+        ("Ollama Model API Key", os.getenv('OLLAMA_API_KEY')),
         ("Binance API Key", os.getenv('BINANCE_API_KEY')),
         ("交易周期", os.getenv('TRADING_INTERVAL_SECONDS')),
         ("默认杠杆", os.getenv('DEFAULT_LEVERAGE')),

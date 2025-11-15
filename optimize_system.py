@@ -36,11 +36,11 @@ try:
 except Exception as e:
     print(f"  ❌ 失败: {e}")
 
-# 2. 修改 deepseek_client.py - 添加胜率过滤
-print("\n📝 步骤2: 优化 deepseek_client.py (胜率显示控制)")
+# 2. 修改 ollama_client.py - 添加胜率过滤
+print("\n📝 步骤2: 优化 ollama_client.py (胜率显示控制)")
 try:
-    with open('deepseek_client.py', 'r', encoding='utf-8') as f:
-        deepseek_content = f.read()
+    with open('ollama_client.py', 'r', encoding='utf-8') as f:
+        ai_content = f.read()
 
     # 找到并修改胜率显示逻辑
     old_logic = """        if trade_history and len(trade_history) > 0:
@@ -61,11 +61,11 @@ try:
             prompt += f"\\n## 交易状态\\n已完成交易: {len(trade_history)}笔 (数据积累中，暂不显示胜率)\\n"
 """
 
-    if old_logic in deepseek_content:
-        deepseek_content = deepseek_content.replace(old_logic, new_logic)
+    if old_logic in ai_content:
+        ai_content = ai_content.replace(old_logic, new_logic)
 
-        with open('deepseek_client.py', 'w', encoding='utf-8') as f:
-            f.write(deepseek_content)
+        with open('ollama_client.py', 'w', encoding='utf-8') as f:
+            f.write(ai_content)
 
         print("  ✅ 胜率显示逻辑已优化")
         print("  ✅ 少于20笔交易时不显示胜率")
@@ -102,18 +102,6 @@ print("  ✅ 成本预计降低: ~50%")
 print("  ✅ 胜率显示优化: 少于20笔交易不显示")
 print("  ✅ 新增配置文件: config.py (集中管理参数)")
 print("  ✅ 新增日志管理工具: log_manager.py")
-
-print("\n💰 成本对比 (DeepSeek定价):")
-print("  Chat模型 (deepseek-chat):")
-print("    - 输入: ¥0.1/百万tokens")
-print("    - 输出: ¥0.2/百万tokens")
-print("  Reasoner模型 (deepseek-reasoner):")
-print("    - 输入: ¥0.55/百万tokens (缓存命中¥0.2)")
-print("    - 输出: ¥2.19/百万tokens")
-print("\n  📉 优化后每小时推理模型调用次数:")
-print("    优化前: 60分钟 / 5分钟 = 12次")
-print("    优化后: 60分钟 / 10分钟 = 6次")
-print("    节省: 50% 推理模型调用")
 
 print("\n⏭️  下一步操作:")
 print("  1. 重置历史数据（清除开发期测试数据）:")

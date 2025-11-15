@@ -1,6 +1,6 @@
 """
 AI 驱动的交易引擎
-集成 DeepSeek API 进行智能交易决策
+集成 Ollama API 进行智能交易决策
 """
 
 from typing import Dict, List, Optional
@@ -10,7 +10,7 @@ import time
 import pandas as pd
 import os
 
-from deepseek_client import DeepSeekClient
+from ollama_client import OllamaClient
 from binance_client import BinanceClient
 from market_analyzer import MarketAnalyzer
 from risk_manager import RiskManager
@@ -29,15 +29,18 @@ except ImportError:
 class AITradingEngine:
     """AI 交易引擎"""
 
-    def __init__(self, deepseek_api_key: str, binance_client: BinanceClient,
+    def __init__(self, ollama_api_key: str, binance_client: BinanceClient,
                  market_analyzer: MarketAnalyzer, risk_manager: RiskManager,
                  performance_tracker=None, roll_tracker=None,
-                 enable_enhanced_features: bool = True):
+                 enable_enhanced_features: bool = True,
+                 ollama_max_tokens: int = 32768, ollama_temperature = 0.3,
+                 ollama_api_timeout: int = 150, ollama_api_port: int = 11434,
+                 ollama_model_name: str = ''):
         """
         初始化 AI 交易引擎
 
         Args:
-            deepseek_api_key: DeepSeek API 密钥
+            ollama_api_key: Ollama API 密钥
             binance_client: Binance 客户端
             market_analyzer: 市场分析器
             risk_manager: 风险管理器
@@ -45,7 +48,8 @@ class AITradingEngine:
             roll_tracker: ROLL状态追踪器
             enable_enhanced_features: 是否启用增强功能（运行状态追踪、丰富市场数据）
         """
-        self.deepseek = DeepSeekClient(deepseek_api_key)
+        self.ollamaClient = OllamaClient(ollama_api_key, ollama_max_tokens, ollama_temperature,
+                                       ollama_api_timeout, ollama_api_port, ollama_model_name)
         self.binance = binance_client
         self.market_analyzer = market_analyzer
         self.risk_manager = risk_manager
@@ -160,15 +164,15 @@ class AITradingEngine:
             use_reasoner = self._should_use_reasoner(symbol, market_data, account_info)
 
             if use_reasoner:
-                self.logger.info(f"[{symbol}] [深度分析] 调用 DeepSeek Chat V3.1...")
-                ai_result = self.deepseek.analyze_with_reasoning(
+                self.logger.info(f"[{symbol}] [深度分析] 调用 Ollama Model...")
+                ai_result = self.ollamaClient.analyze_with_reasoning(
                     market_data=market_data,
                     account_info=account_info,
                     trade_history=self.trade_history[-10:]
                 )
             else:
-                self.logger.info(f"[{symbol}] [快速分析] 调用 DeepSeek Chat V3.1...")
-                ai_result = self.deepseek.analyze_market_and_decide(
+                self.logger.info(f"[{symbol}] [快速分析] Ollama Model V3.1...")
+                ai_result = self.ollamaClient.analyze_market_and_decide(
                     market_data,
                     account_info,
                     self.trade_history
@@ -195,7 +199,7 @@ class AITradingEngine:
                 self.logger.info(f"[{symbol}] [AI-THINK] 推理过程: {reasoning_content[:300]}...")
 
             # 4. [OK] 完全信任AI决策，不设置信心阈值
-            # DeepSeek会根据自己的判断决定信心度，我们完全尊重AI的自主权
+            # Ollama Model会根据自己的判断决定信心度，我们完全尊重AI的自主权
 
             # 执行交易
             trade_result = self._execute_trade(symbol, decision, max_position_pct)
@@ -292,8 +296,8 @@ class AITradingEngine:
             self.logger.info(f"[{symbol}] 开仓价: ${entry_price:.2f}, 当前价: ${current_price:.2f}")
             self.logger.info(f"[{symbol}] 盈亏: ${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)")
 
-            # 调用DeepSeek评估持仓
-            decision = self.deepseek.evaluate_position_for_closing(
+            # 调用Ollama Model评估持仓
+            decision = self.ollamaClient.evaluate_position_for_closing(
                 position_info,
                 market_data,
                 account_info,
@@ -425,7 +429,7 @@ class AITradingEngine:
             交易结果
         """
         action = decision['action']
-        # [OK] 完全由DeepSeek决定！所有参数都由AI自主决策
+        # [OK] 完全由Ollama Model决定！所有参数都由AI自主决策
         # fallback值仅在AI未返回时使用（理论上不应该发生）
         position_size_pct = min(decision.get('position_size', 1), max_position_pct)  # AI未返回时用最保守的1%
 
@@ -437,14 +441,13 @@ class AITradingEngine:
 
         leverage = int(leverage)
 
-        # 🔒 杠杆上限 - 最大20倍（与DeepSeek提示词保持一致）
-        MAX_LEVERAGE = 60  # 强制60倍杠杆
+        # 🔒 杠杆上限 - 最大20倍（与Ollama Model提示词保持一致）
+        MAX_LEVERAGE = 50  # 强制最大50倍杠杆
         if leverage > MAX_LEVERAGE:
             self.logger.warning(f"[WARNING] AI建议杠杆{leverage}x超过上限{MAX_LEVERAGE}x，已强制降至{MAX_LEVERAGE}x")
             leverage = MAX_LEVERAGE
-        elif leverage < 60:
-            self.logger.info(f"[INFO] AI建议杠杆{leverage}x低于目标，强制提升至60x")
-            leverage = 60  # 强制使用60倍杠杆
+        elif leverage < MAX_LEVERAGE:
+            self.logger.info(f"[INFO] AI建议杠杆{leverage}")
         elif leverage < 1:
             self.logger.warning(f"[WARNING] AI建议杠杆{leverage}x过低，已强制调至1x")
             leverage = 1
@@ -454,7 +457,7 @@ class AITradingEngine:
 
         # 获取账户余额
         balance = self.binance.get_futures_usdt_balance()
-        # 使用DeepSeek决定的仓位大小
+        # 使用Ollama Model决定的仓位大小
         trade_amount = balance * (position_size_pct / 100)
 
         try:
@@ -898,7 +901,7 @@ class AITradingEngine:
         # 条件0：时间触发 - 每300秒执行一次Reasoner深度分析
         if current_time - self.last_reasoner_time >= self.reasoner_interval:
             self.last_reasoner_time = current_time
-            self.logger.info(f"[{symbol}] [定时] 10分钟深度分析 - 使用 DeepSeek Chat V3.1")
+            self.logger.info(f"[{symbol}] [定时] 10分钟深度分析")
             return True
 
         # 条件1：开仓决策使用推理模型（最重要）
@@ -916,13 +919,13 @@ class AITradingEngine:
         if not has_position:
             # 开仓决策也更新Reasoner时间戳，避免重复深度分析
             self.last_reasoner_time = current_time
-            self.logger.info(f"[{symbol}] [开仓决策] 深度分析 - 使用 DeepSeek Chat V3.1")
+            self.logger.info(f"[{symbol}] [开仓决策] 深度分析")
             return True
         
         # 条件2：重大市场变化（24h波动>5%）
         price_change_24h = abs(market_data.get('price_change_24h', 0))
         if price_change_24h > 5:
-            self.logger.info(f"[{symbol}] [重大市场变化 {price_change_24h:.1f}%] 深度分析 - 使用 DeepSeek Chat V3.1")
+            self.logger.info(f"[{symbol}] [重大市场变化 {price_change_24h:.1f}%] 深度分析")
             return True
         
         # 条件3：连续亏损（近3笔全亏）
@@ -930,7 +933,7 @@ class AITradingEngine:
             recent_3 = self.trade_history[-3:]
             all_loss = all(t.get('pnl', 0) < 0 for t in recent_3)
             if all_loss:
-                self.logger.info(f"[{symbol}] [连续亏损] 深度分析 - 使用 DeepSeek Chat V3.1")
+                self.logger.info(f"[{symbol}] [连续亏损] 深度分析 - 使用 Ollama Model")
                 return True
         
         # 条件4：账户回撤较大（>10%）
@@ -938,15 +941,15 @@ class AITradingEngine:
         current_balance = account_info.get('balance', 100)
         drawdown_pct = ((initial_balance - current_balance) / initial_balance * 100) if initial_balance > 0 else 0
         if drawdown_pct > 10:
-            self.logger.info(f"[{symbol}] [账户回撤 {drawdown_pct:.1f}%] 深度分析 - 使用 DeepSeek Chat V3.1")
+            self.logger.info(f"[{symbol}] [账户回撤 {drawdown_pct:.1f}%] 深度分析 - 使用 Ollama Model")
             return True
         
         # 条件5：高胜率时可使用推理模型优化策略
         recent_win_rate = self._calculate_recent_win_rate(n=5)
         if recent_win_rate > 0.7:
-            self.logger.info(f"[{symbol}] [高胜率 {recent_win_rate*100:.0f}%] 深度分析优化 - 使用 DeepSeek Chat V3.1")
+            self.logger.info(f"[{symbol}] [高胜率 {recent_win_rate*100:.0f}%] 深度分析优化 - 使用 Ollama Model")
             return True
         
         # 其他情况：快速分析（持仓评估、常规监控）
-        self.logger.info(f"[{symbol}] [常规评估] 快速分析 - DeepSeek Chat V3.1")
+        self.logger.info(f"[{symbol}] [常规评估] 快速分析 - Ollama Model")
         return False

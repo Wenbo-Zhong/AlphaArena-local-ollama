@@ -223,7 +223,7 @@ if __name__ == "__main__":
     print()
     print(ColoredLogger.success("系统初始化成功"))
     print(ColoredLogger.info("正在连接Binance API..."))
-    print(ColoredLogger.ai_message("DeepSeek Chat V3.1 已就绪"))
+    print(ColoredLogger.ai_message("Ollama Model 已就绪"))
     print(ColoredLogger.market_message("开始分析 BTCUSDT"))
     print()
     print(ColoredLogger.trade_action('BUY', 'BTCUSDT', '价格: $45000, 杠杆: 3x'))

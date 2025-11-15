@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 升级系统以支持高级仓位管理策略
-1. 在DeepSeek prompt中注入高级策略说明
+1. 在Ollama Model prompt中注入高级策略说明
 2. 集成advanced_position_manager到ai_trading_engine
 3. 测试验证
 """
@@ -13,15 +13,15 @@ print("🚀 开始升级Alpha Arena到高级仓位管理系统...")
 print()
 
 # ======================
-# 步骤1: 更新 deepseek_client.py - 注入高级策略说明
+# 步骤1: 更新 ollama_client.py - 注入高级策略说明
 # ======================
 
-print("📝 步骤1: 更新DeepSeek prompt...")
+print("📝 步骤1: 更新Ollama Model prompt...")
 
-deepseek_path = '/Volumes/Samsung/AlphaArena/deepseek_client.py'
+ollama_path = '/Volumes/Samsung/AlphaArena/ollama_client.py'
 
-with open(deepseek_path, 'r', encoding='utf-8') as f:
-    deepseek_content = f.read()
+with open(ollama_path, 'r', encoding='utf-8') as f:
+    ollama_content = f.read()
 
 # 找到analyze_market_and_decide方法中的system message部分
 # 在"Available Actions"部分之后添加高级策略说明
@@ -204,20 +204,20 @@ You now have access to 9 professional-grade position management strategies:
 
 # 在"Available Actions:"之后插入高级策略说明
 insert_marker = 'Available Actions:\n- BUY'
-if insert_marker in deepseek_content:
-    deepseek_content = deepseek_content.replace(
+if insert_marker in ollama_content:
+    ollama_content = ollama_content.replace(
         insert_marker,
         insert_marker + advanced_strategies_prompt
     )
-    print("✅ 已在DeepSeek prompt中注入高级策略说明")
+    print("✅ 已在Ollama Model prompt中注入高级策略说明")
 else:
     print("⚠️  警告: 未找到插入点，请手动检查")
 
 # 保存更新后的文件
-with open(deepseek_path, 'w', encoding='utf-8') as f:
-    f.write(deepseek_content)
+with open(ollama_path, 'w', encoding='utf-8') as f:
+    f.write(ollama_content)
 
-print("✅ deepseek_client.py 更新完成")
+print("✅ ollama_client.py 更新完成")
 print()
 
 # ======================
@@ -364,7 +364,7 @@ print("🎉 升级完成！系统已支持9大高级仓位管理策略")
 print("=" * 60)
 print()
 print("📋 已完成的修改:")
-print("  ✅ deepseek_client.py - 已注入高级策略说明到AI prompt")
+print("  ✅ ollama_client.py - 已注入高级策略说明到AI prompt")
 print("  ✅ ai_trading_engine.py - 已集成AdvancedPositionManager")
 print("  ✅ test_advanced_strategies.py - 已创建测试脚本")
 print()

@@ -1,6 +1,6 @@
 """
 高级仓位管理模块 - Advanced Position Management Strategies
-提供专业级的仓位管理策略，供DeepSeek-V3 AI使用
+提供专业级的仓位管理策略，供Ollama Model AI使用
 
 策略清单：
 1. 滚仓（Rolling Position）- 使用浮盈加仓，在大趋势中复利增长
@@ -491,9 +491,9 @@ class AdvancedPositionManager:
 
     # ==================== 6. 动态杠杆调整 ====================
 
-    def adjust_leverage_by_volatility(self, symbol: str, base_leverage: int = 5,
-                                      min_leverage: int = 2,
-                                      max_leverage: int = 10) -> Dict:
+    def adjust_leverage_by_volatility(self, symbol: str, base_leverage: int = 3,
+                                      min_leverage: int = 1,
+                                      max_leverage: int = 50) -> Dict:
         """
         根据市场波动率动态调整杠杆
 
@@ -502,9 +502,9 @@ class AdvancedPositionManager:
 
         Args:
             symbol: 交易对
-            base_leverage: 基础杠杆（默认5x）
-            min_leverage: 最小杠杆（默认2x）
-            max_leverage: 最大杠杆（默认10x）
+            base_leverage: 基础杠杆（默认3x）
+            min_leverage: 最小杠杆（默认1x）
+            max_leverage: 最大杠杆（默认50x）
 
         Returns:
             调整结果

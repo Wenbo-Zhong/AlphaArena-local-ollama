@@ -30,8 +30,8 @@ def optimize_alpha_arena_bot(filepath):
 
     # 3. 英文替换为中文
     replacements = {
-        'Alpha Arena Trading Bot': 'DeepSeek AI 交易机器人',
-        'SUCCESS.*Alpha Arena': 'SUCCESS.*DeepSeek AI 交易',
+        'Alpha Arena Trading Bot': 'Ollama Model 交易机器人',
+        'SUCCESS.*Alpha Arena': 'SUCCESS.*Ollama Model 交易',
     }
 
     for old, new in replacements.items():

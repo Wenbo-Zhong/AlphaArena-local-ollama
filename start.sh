@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "╔══════════════════════════════════════════════════════════╗"
-echo "║         🏆 Alpha Arena - DeepSeek-V3 Trading Bot         ║"
+echo "║        🏆 Alpha Arena - Ollama Model Trading Bot        ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
 

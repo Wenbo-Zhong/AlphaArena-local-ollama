@@ -58,7 +58,7 @@ echo ""
 
 # 显示最新AI决策
 echo "🤖 最新AI决策 (最近1次):"
-grep "\[AI\] DEEPSEEK" "$LOG_FILE" | tail -n 1 | sed 's/^/  /'
+grep "\[AI\] Ollama Model" "$LOG_FILE" | tail -n 1 | sed 's/^/  /'
 echo ""
 
 # 配置信息

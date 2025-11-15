@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-优化DeepSeek决策区域显示
+优化Ollama Model决策区域显示
 - 缩小标题字体
 - 减小标题边距
 - 突出决策卡片
@@ -10,7 +10,7 @@ import re
 
 dashboard_path = '/Volumes/Samsung/AlphaArena/templates/dashboard.html'
 
-print("🔧 优化DeepSeek决策区域显示...")
+print("🔧 优化Ollama Model决策区域显示...")
 
 with open(dashboard_path, 'r', encoding='utf-8') as f:
     content = f.read()
@@ -44,7 +44,7 @@ content = re.sub(old_container_gap, new_container_gap, content)
 with open(dashboard_path, 'w', encoding='utf-8') as f:
     f.write(content)
 
-print("✅ DeepSeek决策区域已优化!")
+print("✅ Ollama Model决策区域已优化!")
 print("\n📋 修改内容:")
 print("  ✓ 标题字体: 0.95rem → 0.75rem (缩小21%)")
 print("  ✓ 标题下边距: 1.2rem → 0.8rem (减少33%)")

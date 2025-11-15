@@ -62,8 +62,8 @@ print("=" * 60)
 leverage_result = adv_manager.adjust_leverage_by_volatility(
     symbol='BTCUSDT',
     base_leverage=5,
-    min_leverage=2,
-    max_leverage=10
+    min_leverage=1,
+    max_leverage=50
 )
 if leverage_result['success']:
     print(f"✅ 建议杠杆: {leverage_result['leverage']}x")

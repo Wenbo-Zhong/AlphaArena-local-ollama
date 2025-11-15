@@ -55,11 +55,16 @@ def test_ai_engine_integration():
 
         # 初始化AI交易引擎（增强功能默认启用）
         ai_engine = AITradingEngine(
-            deepseek_api_key=os.getenv('DEEPSEEK_API_KEY'),
+            ollama_api_key=os.getenv('OLLAMA_API_KEY'),
             binance_client=binance_client,
             market_analyzer=market_analyzer,
             risk_manager=risk_manager,
-            enable_enhanced_features=True  # 显式启用增强功能
+            enable_enhanced_features=True,  # 显式启用增强功能
+            ollama_max_tokens = os.getenv('OLLAMA_MAX_TOKENS', 32768),
+            ollama_temperature = os.getenv('OLLAMA_TEMPERATURE', 0.3),
+            ollama_api_timeout = os.getenv('OLLAMA_API_TIMEOUT', 150),
+            ollama_api_port = os.getenv('OLLAMA_API_TIMEOUT', 11434),
+            ollama_model_name = os.getenv('OLLAMA_MODEL_NAME')
         )
 
         print(f"✅ AI交易引擎初始化成功")

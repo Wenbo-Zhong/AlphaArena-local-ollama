@@ -73,7 +73,7 @@ V3.6: 震荡市 → 小仓位高频进出,积少成多
 核心理念: 空仓=浪费机会成本,任何时候都有机会
 ```
 
-**代码位置**: `deepseek_client.py` 第311-362行
+**代码位置**: `ollama_client.py` 第311-362行
 
 ---
 
@@ -199,7 +199,7 @@ self.rolling_manager = RollingPositionManager(
 )
 ```
 
-### deepseek_client.py
+### ollama_client.py
 
 **做多条件** (第311-331行):
 ```python

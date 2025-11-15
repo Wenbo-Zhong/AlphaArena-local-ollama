@@ -429,7 +429,7 @@ class PerformanceTracker:
 
         return f"""
 ╔══════════════════════════════════════════════════════════╗
-║         [SUCCESS] DeepSeek-V3 性能统计                   ║
+║         [SUCCESS] Ollama Model 性能统计                   ║
 ╠══════════════════════════════════════════════════════════╣
 ║ Account Value:     ${stats['account_value']:,.2f}
 ║ Total Return:      {stats['total_return_pct']:+.2f}%

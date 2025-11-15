@@ -6,7 +6,7 @@
 
 import os
 from dotenv import load_dotenv
-from deepseek_client import DeepSeekClient
+from ollama_client import OllamaClient
 
 def test_zenmux_connection():
     """测试 ZenMux API 连接"""
@@ -27,7 +27,7 @@ def test_zenmux_connection():
     print()
 
     # 初始化客户端
-    client = DeepSeekClient(api_key)
+    client = OllamaClient(api_key)
     print(f"✅ API 端点: {client.base_url}")
     print(f"✅ 模型名称: {client.model_name}")
     print()
@@ -47,10 +47,7 @@ def test_zenmux_connection():
         ]
 
         response = client.chat_completion(
-            messages=test_messages,
-            model="deepseek/deepseek-chat",
-            temperature=0.7,
-            max_tokens=100
+            messages=test_messages
         )
 
         if response and 'choices' in response:
@@ -89,7 +86,7 @@ if __name__ == "__main__":
     else:
         print("❌ ZenMux API 测试失败")
         print("请检查:")
-        print("1. .env 文件中的 DEEPSEEK_API_KEY 是否正确")
+        print("1. .env 文件中的 OLLAMA_API_KEY 是否正确")
         print("2. ZenMux 账户是否有余额")
         print("3. 网络连接是否正常")
     print("=" * 60)

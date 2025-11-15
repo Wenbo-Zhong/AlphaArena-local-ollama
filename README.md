@@ -1,11 +1,11 @@
-# 🏆 Alpha Arena - DeepSeek-V3 Trading Bot
+# 🏆 Alpha Arena - Ollama Model Trading Bot
 
-灵感来自 [nof1.ai](https://nof1.ai) 的 Alpha Arena 实验，这是一个使用 DeepSeek-V3 AI 模型驱动的永不停机的加密货币量化交易系统。
+灵感来自 [nof1.ai](https://nof1.ai) 的 Alpha Arena 实验，这是一个使用 Ollama Model 驱动的永不停机的加密货币量化交易系统。
 
 ## 📖 项目简介
 
 Alpha Arena 是一个完全自主的 AI 交易机器人，它：
-- 🤖 使用 **DeepSeek-V3** 进行智能交易决策
+- 🤖 使用 Ollama Model 进行智能交易决策
 - 📊 实时分析市场技术指标（RSI、MACD、布林带等）
 - ⚡ 自动执行交易（开多、开空、止损、止盈）
 - 📈 追踪性能指标（夏普比率、最大回撤、胜率等）
@@ -17,7 +17,6 @@ Alpha Arena 是一个完全自主的 AI 交易机器人，它：
 nof1.ai 的 Alpha Arena 让 6 个 AI 模型（GPT-5、Gemini 2.5、Grok-4、Claude Sonnet 4.5、DeepSeek-V3、Qwen3 Max）各自使用 $10,000 在 Hyperliquid 交易所进行真实交易竞赛。
 
 **我们的系统**：
-- 专注于 DeepSeek-V3 模型
 - 在 Binance 交易所运行
 - 完全开源，可自定义
 - 永久运行，持续优化
@@ -25,7 +24,6 @@ nof1.ai 的 Alpha Arena 让 6 个 AI 模型（GPT-5、Gemini 2.5、Grok-4、Clau
 ## 🎯 核心功能
 
 ### 1. AI 驱动的交易决策
-- 使用 DeepSeek API 分析市场数据
 - 基于技术指标和趋势分析做出决策
 - 动态调整仓位和杠杆
 - 智能止损止盈
@@ -57,7 +55,7 @@ nof1.ai 的 Alpha Arena 让 6 个 AI 模型（GPT-5、Gemini 2.5、Grok-4、Clau
 
 - Python 3.8+
 - Binance 账户和 API 密钥
-- DeepSeek API 密钥
+- Ollama Model API 密钥
 
 ### 2. 安装依赖
 
@@ -76,11 +74,16 @@ BINANCE_API_KEY=your_binance_api_key
 BINANCE_API_SECRET=your_binance_secret
 BINANCE_TESTNET=false
 
-# DeepSeek API
-DEEPSEEK_API_KEY=your_deepseek_api_key
+# v2ray proxy
+USING_V2RAY_PROXY=1
+V2RAY_PORT=10808
+
+# Ollama API
+OLLAMA_API_KEY=your_ollama_api_key
+OLLAMA_MODEL_NAME=qwen2.5:14b-instruct-q8_0
 
 # 交易配置
-INITIAL_CAPITAL=10000
+INITIAL_CAPITAL=500
 MAX_POSITION_PCT=10
 DEFAULT_LEVERAGE=3
 TRADING_INTERVAL_SECONDS=300
@@ -116,7 +119,7 @@ python3 web_dashboard.py
 ```
 AlphaArena/
 ├── alpha_arena_bot.py          # 主交易机器人
-├── deepseek_client.py          # DeepSeek API 客户端
+├── ollama_client.py            # Ollama Model API 客户端
 ├── ai_trading_engine.py        # AI 交易引擎
 ├── performance_tracker.py      # 性能追踪系统
 ├── web_dashboard.py            # Web 仪表板
@@ -229,7 +232,7 @@ TRADING_SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,ADAUSDT
 ## 📝 更新日志
 
 ### v1.0.0 (2025-10-21)
-- ✅ 实现 DeepSeek-V3 AI 交易引擎
+- ✅ 实现 Ollama Model AI 交易引擎
 - ✅ 性能追踪系统（SharpeBench）
 - ✅ Web 实时仪表板
 - ✅ 永不停机的交易循环
@@ -246,7 +249,6 @@ MIT License
 ## 🙏 致谢
 
 - 灵感来自 [nof1.ai](https://nof1.ai) 的 Alpha Arena 实验
-- 使用 [DeepSeek](https://www.deepseek.com) API
 - 基于 [Binance](https://www.binance.com) 交易所
 
 ---

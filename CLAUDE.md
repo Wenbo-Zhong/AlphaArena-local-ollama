@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Alpha Arena is a dual-system AI-powered cryptocurrency trading platform inspired by nof1.ai's Alpha Arena experiment. The repository contains:
 
-1. **Python Legacy System**: A production-ready DeepSeek-V3 trading bot (currently operational)
+1. **Python Legacy System**: A production-ready Ollama Model trading bot (currently operational)
 2. **Next.js Modern System**: A full-stack multi-AI trading arena under development (alpha-arena-nextjs/)
 
 Both systems trade cryptocurrency futures on Binance with AI-driven decision making, real-time monitoring, and comprehensive performance tracking.
@@ -32,7 +32,7 @@ python3 alpha_arena_bot.py          # Direct bot execution
 ./manage.sh screen                  # Start in background screen session
 
 # Testing & Setup
-python3 test_connection.py          # Test Binance and DeepSeek API connections
+python3 test_connection.py          # Test Binance and Ollama Model API connections
 pip3 install -r requirements.txt    # Install dependencies
 
 # Monitoring
@@ -78,13 +78,13 @@ The system uses a layered architecture with clear separation of concerns:
    - Configurable via environment variables
 
 2. **ai_trading_engine.py** (AI Decision Layer)
-   - Integrates DeepSeek API for trading decisions
+   - Integrates Ollama Model API for trading decisions
    - Analyzes market data + technical indicators → AI decision
    - Implements 15-minute cooldown period to prevent rapid retries
    - Executes trades based on AI confidence levels
 
-3. **deepseek_client.py** (AI Client)
-   - DeepSeek API wrapper
+3. **ollama_client.py** (AI Client)
+   - Ollama Model API wrapper
    - Generates structured prompts with market context
    - Parses AI responses into actionable decisions
    - Returns: action, confidence, reasoning, position_size, leverage, stop_loss, take_profit
@@ -131,7 +131,7 @@ Trading Loop (configurable interval, default 5 min):
     ↓
   Technical Analysis (MarketAnalyzer)
     ↓
-  AI Decision (DeepSeekClient via AITradingEngine)
+  AI Decision (Ollama Model via AITradingEngine)
     ↓
   Risk Validation (RiskManager)
     ↓
@@ -153,7 +153,6 @@ Trading Loop (configurable interval, default 5 min):
 See `alpha-arena-nextjs/CLAUDE.md` for detailed Next.js architecture documentation.
 
 **Key Differences from Python System**:
-- Multi-AI model support (DeepSeek, OpenAI, Claude) vs. single DeepSeek
 - PostgreSQL database vs. JSON files
 - React dashboard vs. Flask HTML templates
 - Real-time WebSocket market data vs. REST polling
@@ -170,8 +169,8 @@ BINANCE_API_KEY=your_api_key
 BINANCE_API_SECRET=your_api_secret
 BINANCE_TESTNET=false              # true for testnet, false for mainnet
 
-# DeepSeek API (REQUIRED)
-DEEPSEEK_API_KEY=sk-your-key
+# Ollama Model API (REQUIRED)
+OLLAMA_API_KEY=sk-your-key
 
 # Trading Configuration
 INITIAL_CAPITAL=10000              # Starting capital in USDT
@@ -337,7 +336,7 @@ Each decision includes:
 
 ### Modifying AI Decision Logic
 
-Edit `deepseek_client.py` → `make_trading_decision()`:
+Edit `ollama_client.py` → `make_trading_decision()`:
 - Modify the prompt template to change AI context
 - Adjust confidence threshold requirements
 - Change decision parsing logic
@@ -376,7 +375,6 @@ Edit `deepseek_client.py` → `make_trading_decision()`:
 **Current Version**: v3.6 (2分钟超短线 + 60x杠杆 + 浮盈滚仓)
 
 **Core Features Active**:
-- ✅ DeepSeek Chat V3.1 AI decision engine
 - ✅ Rolling position manager (0.8%触发, 60%加仓, 最多3次)
 - ✅ ATR dynamic trailing stops (2.0x multiplier)
 - ✅ Force close on $2 profit target
@@ -389,7 +387,7 @@ Edit `deepseek_client.py` → `make_trading_decision()`:
 **Key Files**:
 - `alpha_arena_bot.py` - Main orchestrator (1000 lines)
 - `ai_trading_engine.py` - AI decision integration (953 lines)
-- `deepseek_client.py` - DeepSeek API wrapper
+- `ollama_client.py` - Ollama Model API wrapper
 - `rolling_position_manager.py` - 浮盈滚仓管理
 - `roll_tracker.py` - ROLL状态追踪
 - `advanced_position_manager.py` - 高级仓位管理
@@ -416,7 +414,6 @@ See `alpha-arena-nextjs/CLAUDE.md` for detailed status.
 
 **When to use Python system**:
 - Immediate trading needs
-- Single AI model (DeepSeek) sufficient
 - Simple deployment requirements
 - Familiar with Python ecosystem
 
@@ -436,7 +433,7 @@ AlphaArena/
 ├── Python Trading System (Root)
 │   ├── alpha_arena_bot.py          # Main bot orchestrator
 │   ├── ai_trading_engine.py        # AI decision integration
-│   ├── deepseek_client.py          # DeepSeek API wrapper
+│   ├── ollama_client.py            # Ollama Model API wrapper
 │   ├── binance_client.py           # Binance API wrapper
 │   ├── market_analyzer.py          # Technical indicators
 │   ├── risk_manager.py             # Risk management
@@ -467,9 +464,9 @@ AlphaArena/
 - Check Binance API rate limits
 - Ensure sufficient balance in account
 
-### DeepSeek API errors
+### Ollama Model API errors
 - Verify API key in `.env`
-- Check DeepSeek account balance/credits
+- Check Ollama Model account balance/credits
 - Review API rate limits
 - Check `ai_decisions.json` for error messages
 
@@ -547,8 +544,8 @@ if unrealized_pnl >= PROFIT_TARGET:
 
 **Force 60x Leverage** (ai_trading_engine.py:441-450):
 ```python
-MAX_LEVERAGE = 60  # Hard limit
-leverage = 60  # Force all positions to 60x
+MAX_LEVERAGE = 50  # Hard limit
+leverage = 50  # Force all positions to 50x
 
 # Smart adjustment for Binance requirements:
 min_notional = max(20, min_qty * current_price)
@@ -588,12 +585,12 @@ Symbol-specific minimum quantities:
       → Return True (skip AI evaluation)
 
    c. ai_engine.analyze_position_for_closing(symbol, position, runtime_stats)
-      → DeepSeek evaluates: HOLD, CLOSE, or ROLL
+      → Ollama Model evaluates: HOLD, CLOSE, or ROLL
       → Execute based on AI decision
 
 4. ELSE (no position):
    a. ai_engine.analyze_and_trade(symbol, max_position_pct, runtime_stats)
-      → DeepSeek decides: BUY, SELL, or HOLD
+      → Ollama Model decides: BUY, SELL, or HOLD
       → Execute based on AI decision
 ```
 

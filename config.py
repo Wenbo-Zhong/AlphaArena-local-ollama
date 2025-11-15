@@ -10,7 +10,7 @@ load_dotenv()
 
 # ==================== AI 模型配置 ====================
 
-# DeepSeek推理模型（昂贵但深度）使用策略
+# 推理模型使用策略
 REASONER_INTERVAL_SECONDS = 600  # 推理模型最小调用间隔（秒）- 默认10分钟
 
 # 强制使用推理模型的场景（即使未到时间间隔）
@@ -34,8 +34,8 @@ BINANCE_API_KEY = os.getenv('BINANCE_API_KEY')
 BINANCE_API_SECRET = os.getenv('BINANCE_API_SECRET')
 BINANCE_TESTNET = os.getenv('BINANCE_TESTNET', 'false').lower() == 'true'
 
-# DeepSeek API
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+# Ollama API
+OLLAMA_API_KEY = os.getenv('OLLAMA_API_KEY')
 
 # 交易参数
 INITIAL_CAPITAL = float(os.getenv('INITIAL_CAPITAL', '20'))

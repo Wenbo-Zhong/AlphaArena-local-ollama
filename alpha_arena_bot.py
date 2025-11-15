@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DeepSeek Ai Trade Bot
+Ollama Model Trade Bot
 永不停机的 AI 驱动量化交易系统
 """
 
@@ -25,7 +25,7 @@ from rolling_position_manager import RollingPositionManager  # [NEW V3.0] 浮盈
 
 
 class AlphaArenaBot:
-    """DeepSeek Ai Trade Bot"""
+    """Ollama Model Trade Bot"""
 
     def __init__(self):
         """初始化机器人"""
@@ -53,7 +53,7 @@ class AlphaArenaBot:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-        self.logger.info("[SYSTEM] DeepSeek Ai Trade Bot 初始化完成")
+        self.logger.info("[SYSTEM] Ollama Model Trade Bot 初始化完成")
 
     def _setup_logging(self):
         """设置日志"""
@@ -91,8 +91,17 @@ class AlphaArenaBot:
         self.binance_api_secret = os.getenv('BINANCE_API_SECRET')
         self.testnet = os.getenv('BINANCE_TESTNET', 'false').lower() == 'true'
 
-        # DeepSeek 配置
-        self.deepseek_api_key = os.getenv('DEEPSEEK_API_KEY')
+        # v2ray 配置
+        self.using_v2ray = os.getenv('USING_V2RAY_PROXY', 1)
+        self.v2ray_port = os.getenv('V2RAY_PORT', 10808)
+
+        # ollama 配置
+        self.ollama_api_key = os.getenv('OLLAMA_API_KEY')
+        self.ollama_max_tokens = os.getenv('OLLAMA_MAX_TOKENS', 32768)
+        self.ollama_temperature = os.getenv('OLLAMA_TEMPERATURE', 0.3)
+        self.ollama_api_timeout = os.getenv('OLLAMA_API_TIMEOUT', 150)
+        self.ollama_api_port = os.getenv('OLLAMA_API_TIMEOUT', 11434)
+        self.ollama_model_name = os.getenv('OLLAMA_MODEL_NAME', '')
 
         # 交易配置
         self.initial_capital = float(os.getenv('INITIAL_CAPITAL', 10000))
@@ -112,7 +121,9 @@ class AlphaArenaBot:
         self.binance = BinanceClient(
             api_key=self.binance_api_key,
             api_secret=self.binance_api_secret,
-            testnet=self.testnet
+            testnet=self.testnet,
+            using_v2ray=self.using_v2ray,
+            v2ray_port=self.v2ray_port
         )
 
         # [NEW] 从Binance API获取实际账户余额，替代配置文件中的初始资金
@@ -133,7 +144,7 @@ class AlphaArenaBot:
         risk_config = {
             'max_portfolio_risk': 0.02,
             'max_position_size': self.max_position_pct / 100,
-            'max_leverage': 30,  # 统一为30倍，与AI决策范围一致
+            'max_leverage': 50,  # 统一为50倍，与AI决策范围一致
             'default_stop_loss_pct': 0.015,  # 1.5%止损，与交易策略一致
             'default_take_profit_pct': 0.05,  # 5%止盈
             'max_drawdown': 0.15,
@@ -163,12 +174,17 @@ class AlphaArenaBot:
 
         # AI 交易引擎
         self.ai_engine = AITradingEngine(
-            deepseek_api_key=self.deepseek_api_key,
+            ollama_api_key=self.ollama_api_key,
             binance_client=self.binance,
             market_analyzer=self.market_analyzer,
             risk_manager=self.risk_manager,
             performance_tracker=self.performance,  # [FIX] 传入性能追踪器
-            roll_tracker=self.roll_tracker  # [V3.3] 传入ROLL追踪器
+            roll_tracker=self.roll_tracker,  # [V3.3] 传入ROLL追踪器
+            ollama_max_tokens=self.ollama_max_tokens,
+            ollama_temperature=self.ollama_temperature,
+            ollama_api_timeout=self.ollama_api_timeout,
+            ollama_api_port=self.ollama_api_port,
+            ollama_model_name=self.ollama_model_name
         )
 
         # [NEW V2.0] 高级仓位管理器
@@ -185,11 +201,11 @@ class AlphaArenaBot:
     def run_forever(self):
         """永久运行主循环"""
         self.logger.info("=" * 60)
-        self.logger.info("[SUCCESS] DeepSeek Ai Trade Bot 启动")
+        self.logger.info("[SUCCESS] Ollama Model Trade Bot 启动")
         self.logger.info(f"[MONEY] 账户余额: ${self.initial_capital:,.2f}")
         self.logger.info(f"[ANALYZE] 交易对: {', '.join(self.trading_symbols)}")
         self.logger.info(f"[TIME]  交易间隔: {self.trading_interval}秒")
-        self.logger.info(f"[AI] AI 模型: DeepSeek Chat V3.1")
+        # self.logger.info(f"[AI] AI 模型: ")
         self.logger.info("=" * 60)
 
         cycle_count = 0
@@ -341,7 +357,7 @@ class AlphaArenaBot:
 
             # 获取当前价格和24h数据
             try:
-                ticker = self.binance.get_futures_24h_ticker(symbol=symbol)
+                ticker = self.binance.get_24h_ticker(symbol=symbol)
                 current_price = float(ticker.get('lastPrice', 0))
                 price_change_24h = float(ticker.get('priceChangePercent', 0))
                 volume_24h = float(ticker.get('volume', 0))
@@ -479,6 +495,9 @@ class AlphaArenaBot:
             if result['success']:
                 action = result.get('trade_result', {}).get('action', 'HOLD')
                 ai_decision = result.get('ai_decision', {})
+                confidence = ai_decision.get('confidence', 0)
+                leverage = ai_decision.get('leverage', 1)
+                position_size = ai_decision.get('position_size', 0)
 
                 # 保存所有AI决策（包括HOLD）到文件供仪表板显示
                 self._save_ai_decision(symbol, ai_decision, result.get('trade_result', {}))
@@ -494,12 +513,10 @@ class AlphaArenaBot:
 
                     self.performance.record_trade(trade_info)
 
-                    self.logger.info(f"\n[AI] DEEPSEEK CHAT V3.1 决策:")
-                    self.logger.info(f"  {narrative}")
+                    self.logger.info(f"\n[AI] OLLAMA MODEL 决策: 行为: {action} 置信度: {confidence} 原因: {narrative} 杠杆: {leverage} 仓位: {position_size}")
                 else:
                     # HOLD决策 - 显示叙述性说明
-                    self.logger.info(f"\n[AI] DEEPSEEK CHAT V3.1 决策:")
-                    self.logger.info(f"  {narrative}")
+                    self.logger.info(f"\n[AI] OLLAMA MODEL 决策: 行为: {action} 置信度: {confidence} 原因: {narrative} 杠杆: {leverage} 仓位: {position_size}")
 
             else:
                 self.logger.error(f"  [ERROR] 交易失败: {result.get('error')}")
@@ -532,8 +549,9 @@ class AlphaArenaBot:
                 positions = []
 
             # 获取交易时段信息
-            from deepseek_client import DeepSeekClient
-            temp_client = DeepSeekClient(self.deepseek_api_key)
+            from ollama_client import OllamaClient
+            temp_client = OllamaClient(self.ollama_api_key, self.ollama_max_tokens, self.ollama_temperature,
+                                       self.ollama_api_timeout, self.ollama_api_port, self.ollama_model_name)
             session_info = temp_client.get_trading_session()
 
             # 构建增强的决策记录
@@ -812,7 +830,7 @@ class AlphaArenaBot:
 
     def _shutdown(self):
         """关闭机器人"""
-        self.logger.info("\n🛑 DeepSeek Ai Trade Bot 正在关闭...")
+        self.logger.info("\n🛑 Ollama Model Ai Trade Bot 正在关闭...")
 
         try:
             # 显示最终表现
@@ -952,21 +970,13 @@ def main():
     # 创建并运行机器人
     bot = AlphaArenaBot()
 
-    # DeepSeek 专属品牌色
-    deepseek_blue = '\033[38;2;41;148;255m'
+    blue = '\033[38;2;41;148;255m'
     reset = '\033[0m'
     bold = '\033[1m'
 
     print(f"""
-{bold}{deepseek_blue}
+{bold}{blue}
 ╔══════════════════════════════════════════════════════════╗
-║                                                          ║
-║   ██████╗ ███████╗███████╗██████╗ ███████╗███████╗██╗  ██╗
-║   ██╔══██╗██╔════╝██╔════╝██╔══██╗██╔════╝██╔════╝██║ ██╔╝
-║   ██║  ██║█████╗  █████╗  ██████╔╝███████╗█████╗  █████╔╝
-║   ██║  ██║██╔══╝  ██╔══╝  ██╔═══╝ ╚════██║██╔══╝  ██╔═██╗
-║   ██████╔╝███████╗███████╗██║     ███████║███████╗██║  ██╗
-║   ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝
 ║                                                          ║
 ║        ████████╗██████╗  █████╗ ██████╗ ███████╗
 ║        ╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██╔════╝

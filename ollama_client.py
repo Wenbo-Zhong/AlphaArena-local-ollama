@@ -1,31 +1,36 @@
 """
-DeepSeek API 客户端
+Ollama Model API 客户端
 用于 AI 交易决策
 """
 
 import requests
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List
 import logging
 from datetime import datetime
 import pytz
 
 
-class DeepSeekClient:
-    """DeepSeek API 客户端"""
+class OllamaClient:
+    """Ollama Model API 客户端"""
 
-    def __init__(self, api_key: str):
+    def __init__(self, ollama_api_key: str, ollama_max_tokens, ollama_temperature, ollama_api_timeout, ollama_api_port,
+                 ollama_model_name):
         """
-        初始化 DeepSeek 客户端
+        初始化 Ollama Model 客户端
 
         Args:
-            api_key: DeepSeek API 密钥
+            ollama_api_key: Ollama Model API 密钥
         """
-        self.api_key = api_key
-        self.base_url = "https://zenmux.ai/api/v1"  # ZenMux API 端点
-        self.model_name = "deepseek/deepseek-chat"  # ZenMux 模型名称
+        self.api_key = ollama_api_key
+        self.timeout = ollama_api_timeout
+        self.base_url = f"http://localhost:{ollama_api_port}/api"
+        self.url = f"{self.base_url}/chat"
+        self.max_tokens = ollama_max_tokens
+        self.model_name = ollama_model_name # 模型名称
+        self.temperature = ollama_temperature
         self.headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {ollama_api_key}",
             "Content-Type": "application/json"
         }
         self.logger = logging.getLogger(__name__)
@@ -57,39 +62,41 @@ class DeepSeekClient:
             self.logger.error(f"获取交易时段失败: {e}")
             return {'session': '未知', 'volatility': 'unknown', 'recommendation': '谨慎交易', 'aggressive_mode': False, 'beijing_hour': 0, 'utc_hour': 0}
 
-    def chat_completion(self, messages: List[Dict], model: str = "deepseek/deepseek-chat",
-                       temperature: float = 0.7, max_tokens: int = 2000) -> Dict:
-        """通用聊天完成接口"""
+    def chat_completion(self, messages: List[Dict]) -> Dict:
+        """Ollama → OpenAI 兼容格式"""
         try:
             response = requests.post(
-                f"{self.base_url}/chat/completions",
+                "http://localhost:11434/api/chat",
                 headers=self.headers,
                 json={
-                    "model": model,
+                    "model": self.model_name,
                     "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
+                    "stream": False
                 },
-                timeout=180  # 统一增加到180秒
+                timeout=self.timeout
             )
 
             if response.status_code == 200:
-                return response.json()
+                ollama_data = response.json()
+                content = ollama_data.get("message", {}).get("content", "")
+                return {
+                    "choices": [{
+                        "message": {"content": content}
+                    }]
+                }
             else:
-                self.logger.error(f"API错误: {response.status_code} - {response.text}")
-                return {"error": f"API错误: {response.status_code}"}
+                return {"error": f"HTTP {response.status_code}"}
 
         except Exception as e:
             self.logger.error(f"API调用异常: {e}")
             return {"error": str(e)}
 
-    def reasoning_completion(self, messages: List[Dict], max_tokens: int = 4000) -> Dict:
-        """使用DeepSeek-R1推理模型"""
+    def reasoning_completion(self, messages: List[Dict]) -> Dict:
+        """使用Ollama Model推理模型"""
         return self.chat_completion(
             messages=messages,
-            model="deepseek/deepseek-reasoner",
-            temperature=1.0,
-            max_tokens=max_tokens
         )
 
     def analyze_market_and_decide(self, market_data: Dict,
@@ -104,13 +111,10 @@ class DeepSeekClient:
         messages = [
             {
                 "role": "system",
-                "content": """你是专业的加密货币交易员。
+                "content": """你是一个交易执行机器人
 
 ## 目标
-快速盈利$2,系统自动止盈平仓。
-
-## 策略
-60倍高杠杆,快进快出,赚够$2立即平仓。
+快速盈利,系统自动止盈平仓。
 
 ## 可用操作
 - OPEN_LONG: 开多
@@ -119,7 +123,6 @@ class DeepSeekClient:
 - HOLD: 观望
 
 ## 系统自动处理
-- 盈利≥$2自动平仓(强制止盈)
 - 浮盈滚仓(盈利≥0.8%自动加仓)
 - 风险控制和订单执行
 
@@ -127,10 +130,9 @@ class DeepSeekClient:
 - 完全自主决定所有交易决策
 - 自己判断市场、选择杠杆、决定仓位
 
-## 回复格式
-JSON,包含: action, confidence(0-100), reasoning, leverage(建议60), position_size(1-100)
-
-现在,基于下面的市场数据做出你的决策"""
+输出一个 JSON 决定当前操作。
+格式：{"action":"OPEN_LONG","confidence":85,"reasoning":"看涨","leverage":60,"position_size":50}
+直接输出 JSON，不要加任何文字。"""
             },
             {
                 "role": "user",
@@ -143,17 +145,17 @@ JSON,包含: action, confidence(0-100), reasoning, leverage(建议60), position_
             try:
                 self.logger.info(f"API调用尝试 {attempt + 1}/2...")
                 response = requests.post(
-                    f"{self.base_url}/chat/completions",
+                    self.url,
                     headers=self.headers,
                     json={
                         "model": self.model_name,
                         "messages": messages,
-                        "temperature": 0.7,
-                        "max_tokens": 2000
+                        "temperature": self.temperature,
+                        "max_tokens": self.max_tokens
                     },
-                    timeout=180  # 增加到180秒
+                    timeout=self.timeout
                 )
-
+                # self.logger.warning('AI response: '+ result)
                 if response.status_code == 200:
                     result = response.json()
                     content = result['choices'][0]['message']['content']
@@ -165,7 +167,7 @@ JSON,包含: action, confidence(0-100), reasoning, leverage(建议60), position_
                         'success': True,
                         'decision': decision,
                         'raw_response': content,
-                        'model_used': 'deepseek-chat'
+                        'model_used': self.model_name
                     }
                 else:
                     self.logger.error(f"API错误 {response.status_code}: {response.text}")
@@ -231,10 +233,20 @@ JSON,包含: action, confidence(0-100), reasoning, leverage(建议60), position_
         messages = [
             {
                 "role": "system",
-                "content": """你是专业交易员。评估是否应该平仓。
+                "content": """你是专业交易员。评估是否应该平仓，**必须**严格遵守以下规则：
 
-## 回复格式
-JSON: {"action": "CLOSE或HOLD", "confidence": 0-100, "narrative": "决策说明"}"""
+## 规则（违反 = 失败）
+1. 你**只能**输出一个 JSON 对象
+2. **禁止**任何非 JSON 内容（包括解释、警告、代码、空格、换行）
+3. **禁止**使用 ```json 或 ```
+4. **必须**直接从第一个字符开始输出 `{`
+5. **必须**以 `}` 结束
+6. **违反规则 = 任务失败，系统将重置你**
+
+## 输出格式（一字不改）
+{"action":"OPEN_LONG","confidence":90,"reasoning":"价格突破103500","leverage":60,"position_size":50}
+
+## 现在立即输出 JSON，不要说话，不要思考，直接输出！"""
             },
             {
                 "role": "user",
@@ -244,19 +256,20 @@ JSON: {"action": "CLOSE或HOLD", "confidence": 0-100, "narrative": "决策说明
 
         try:
             response = requests.post(
-                f"{self.base_url}/chat/completions",
+                self.url,
                 headers=self.headers,
                 json={
                     "model": self.model_name,
                     "messages": messages,
-                    "temperature": 0.7,
-                    "max_tokens": 1000
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens
                 },
-                timeout=180  # 统一增加到180秒
+                timeout=self.timeout
             )
 
             if response.status_code == 200:
                 result = response.json()
+                # self.logger.warning('AI response: '+ result)
                 content = result['choices'][0]['message']['content']
                 decision = self._parse_decision(content)
                 return decision
@@ -275,7 +288,7 @@ JSON: {"action": "CLOSE或HOLD", "confidence": 0-100, "narrative": "决策说明
         messages = [
             {
                 "role": "system",
-                "content": """你是专业的加密货币交易员。
+                "content": """你是一个交易执行机器人，**必须**严格遵守以下规则：
 
 ## 目标
 最大化账户收益。
@@ -296,8 +309,18 @@ JSON: {"action": "CLOSE或HOLD", "confidence": 0-100, "narrative": "决策说明
 - 自己判断市场、选择杠杆、决定仓位
 - 不需要遵守任何规则或建议
 
-## 回复格式
-JSON,包含: action, confidence(0-100), reasoning, leverage(1-80), position_size(1-100), stop_loss_pct, take_profit_pct"""
+## 规则（违反 = 失败）
+1. 你**只能**输出一个 JSON 对象
+2. **禁止**任何非 JSON 内容（包括解释、警告、代码、空格、换行）
+3. **禁止**使用 ```json 或 ```
+4. **必须**直接从第一个字符开始输出 `{`
+5. **必须**以 `}` 结束
+6. **违反规则 = 任务失败，系统将重置你**
+
+## 输出格式（一字不改）
+{"action":"OPEN_LONG","confidence":90,"reasoning":"价格突破103500","leverage":60,"position_size":50}
+
+## 现在立即输出 JSON，不要说话，不要思考，直接输出！"""
             },
             {
                 "role": "user",
@@ -306,7 +329,8 @@ JSON,包含: action, confidence(0-100), reasoning, leverage(1-80), position_size
         ]
 
         try:
-            response = self.reasoning_completion(messages, max_tokens=8000)
+            response = self.reasoning_completion(messages)
+            # self.logger.warning('AI response: '+ str(response))
             
             if 'error' in response:
                 return {
