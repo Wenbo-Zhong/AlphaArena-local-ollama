@@ -134,7 +134,7 @@ class BinanceClient:
                             position_side: str = 'BOTH',
                             reduce_only: bool = False,
                             time_in_force: str = 'GTC', **kwargs) -> Dict:
-        if order_type == 'BUY':
+        if side == 'BUY':
             params = {
                 'symbol': symbol,
                 'side': side,

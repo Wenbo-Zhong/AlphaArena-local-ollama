@@ -572,7 +572,7 @@ class AITradingEngine:
             # 计算所需杠杆
             required_leverage = int(min_notional / amount) + 1
             original_leverage = leverage
-            leverage = min(max(leverage, required_leverage), 60)  # 强制60倍杠杆
+            leverage = min(max(leverage, required_leverage), 50)  # 强制50倍杠杆
 
             if leverage != original_leverage:
                 self.logger.info(f"[IDEA] [{symbol}] 智能杠杆调整: {original_leverage}x → {leverage}x "
@@ -690,7 +690,7 @@ class AITradingEngine:
             # 计算所需杠杆
             required_leverage = int(min_notional / amount) + 1
             original_leverage = leverage
-            leverage = min(max(leverage, required_leverage), 60)  # 强制60倍杠杆
+            leverage = min(max(leverage, required_leverage), 50)  # 强制50倍杠杆
 
             if leverage != original_leverage:
                 self.logger.info(f"[IDEA] [{symbol}] 智能杠杆调整: {original_leverage}x → {leverage}x "
