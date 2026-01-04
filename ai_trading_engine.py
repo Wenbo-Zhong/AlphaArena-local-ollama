@@ -355,9 +355,9 @@ class AITradingEngine:
             self.logger.warning(f"[WARNING] AI建议杠杆{leverage}x过低，已强制调至1x")
             leverage = 1
 
-        stop_loss_pct = decision.get('stop_loss_pct', config.DEFAULT_AI_STOP_LOSS_PCT * 100) / 100  # AI未返回时最保守1%止损
+        stop_loss_pct = decision.get('stop_loss_pct', config.DEFAULT_AI_STOP_LOSS_PCT)  # AI未返回时最保守1%止损
         take_profit_pct = decision.get('take_profit_pct',
-                                       config.DEFAULT_AI_TAKE_PROFIT_PCT * 100) / 100  # AI未返回时最保守2%止盈
+                                       config.DEFAULT_AI_TAKE_PROFIT_PCT)  # AI未返回时最保守2%止盈
 
         # 获取账户余额
         balance = self.binance.get_futures_usdt_balance()
@@ -765,7 +765,7 @@ class AITradingEngine:
                 # 全新系统，无真实交易历史，不显示警告
                 self.logger.debug(f"[{symbol}] [DEBUG] 无有效交易历史，跳过胜率检查")
 
-    def _calculate_recent_win_rate(self, n: int = 5) -> float:
+    def _calculate_recent_win_rate(self, n: int = config.MIN_TRADES_FOR_WINRATE) -> float:
         """
         计算最近N笔交易的胜率
 

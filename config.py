@@ -11,7 +11,7 @@ load_dotenv()
 # ==================== AI 模型配置 ====================
 
 # 推理模型使用策略
-REASONER_INTERVAL_SECONDS = 600  # 推理模型最小调用间隔（秒）- 默认10分钟
+REASONER_INTERVAL_SECONDS = 180  # 推理模型最小调用间隔（秒）- 默认5分钟，与REASONER_MODEL_INTERVAL_SECONDS保持一致
 
 # 强制使用推理模型的场景（即使未到时间间隔）
 USE_REASONER_FOR_OPENING = True  # 开仓决策使用推理模型
@@ -69,7 +69,7 @@ DEFAULT_AI_TAKE_PROFIT_PCT = 0.02  # AI未提供止盈时的默认值（2%）
 
 # AI模型配置
 CHAT_MODEL_INTERVAL_SECONDS = 120  # 快速反应模型分析间隔（秒）
-REASONER_MODEL_INTERVAL_SECONDS = 300  # 深度分析模型分析间隔（秒）
+REASONER_MODEL_INTERVAL_SECONDS = 180  # 深度分析模型分析间隔（秒）
 
 # 显示配置
 ACCOUNT_DISPLAY_INTERVAL_SECONDS = 120  # 账户信息显示间隔（秒）
