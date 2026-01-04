@@ -128,63 +128,15 @@ class AITradingEngine:
                         'reason': f'冷却期中（还需{remaining//60}分钟）'
                     }
 
-            # 1. 检查最近胜率（仅在有足够交易历史时显示）
-            # [V3.4 FIX] 只有在有真实交易记录（pnl不全为0）时才显示胜率警告
-            if len(self.trade_history) >= config.MIN_TRADES_FOR_WINRATE:
-                # 检查是否有真实交易（至少有一笔非零pnl）
-                has_real_trades = any(t.get('pnl', 0) != 0 for t in self.trade_history[-config.MIN_TRADES_FOR_WINRATE:])
+            # 1. 检查最近胜率
+            self._check_win_rate(symbol)
 
-                if has_real_trades:
-                    recent_win_rate = self._calculate_recent_win_rate(n=config.MIN_TRADES_FOR_WINRATE)
-                    if recent_win_rate < config.LOW_WINRATE_THRESHOLD:
-                        self.logger.warning(
-                            f"[{symbol}] [WARNING] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率较低: {recent_win_rate * 100:.1f}% - AI将根据这个信息自主决策")
-                    elif recent_win_rate > config.HIGH_WINRATE_THRESHOLD:
-                        self.logger.info(
-                            f"[{symbol}] [INFO] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率良好: {recent_win_rate * 100:.1f}%")
-                    else:
-                        self.logger.info(
-                            f"[{symbol}] [INFO] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率: {recent_win_rate * 100:.1f}%")
-                else:
-                    # 全新系统，无真实交易历史，不显示警告
-                    self.logger.debug(f"[{symbol}] [DEBUG] 无有效交易历史，跳过胜率检查")
-
-            # 2. 收集市场数据
-            self.logger.info(f"[{symbol}] 开始分析...")
-
-            # [NEW] 如果启用了增强功能，使用MarketAnalyzer获取完整市场上下文
-            if self.enhanced_features_enabled and self.market_analyzer:
-                market_data = self.market_analyzer.get_comprehensive_market_context(symbol)
-                self.logger.debug(f"[{symbol}] [OK] 使用增强市场数据（包含历史序列、4h上下文、资金费率、持仓量）")
-            else:
-                market_data = self._gather_market_data(symbol)
-
-            # 2. 获取账户信息（传递runtime_stats）
+            # 2. 收集市场数据并获取账户信息
+            market_data = self._get_market_data(symbol)
             account_info = self._get_account_info(runtime_stats=runtime_stats)
 
-            # 3. 双模型决策系统：推理模型 + 日常模型
-            # 判断是否使用推理模型（Reasoner）
-            use_reasoner = self._should_use_reasoner(symbol, market_data, account_info)
-
-            if use_reasoner:
-                self.logger.info(f"[{symbol}] [深度分析] 调用 Ollama Model...")
-                ai_result = self.ollama_client.analyze_with_reasoning(
-                    market_data=market_data,
-                    account_info=account_info,
-                    trade_history=self.trade_history[-10:]
-                )
-            else:
-                self.logger.info(f"[{symbol}] [快速分析] Ollama Model V3.1...")
-                ai_result = self.ollama_client.analyze_market_and_decide(
-                    market_data,
-                    account_info,
-                    self.trade_history
-                )
-
-            # [NEW] AI调用后更新计数
-            if self.enhanced_features_enabled and self.runtime_manager:
-                self.runtime_manager.increment_ai_calls()
-
+            # 3. 获取AI决策
+            ai_result = self._get_ai_decision(symbol, market_data, account_info)
             if not ai_result['success']:
                 return {
                     'success': False,
@@ -201,19 +153,9 @@ class AITradingEngine:
             if reasoning_content:
                 self.logger.info(f"[{symbol}] [AI-THINK] 推理过程: {reasoning_content[:300]}...")
 
-            # 4. [OK] 完全信任AI决策，不设置信心阈值
-            # Ollama Model会根据自己的判断决定信心度，我们完全尊重AI的自主权
-
-            # 执行交易
+            # 4. 执行交易并处理结果
             trade_result = self._execute_trade(symbol, decision, max_position_pct)
-
-            # 如果交易失败，设置冷却期（防止重复尝试）
-            if not trade_result.get('success', False):
-                self.trade_cooldown[symbol] = time.time() + self.cooldown_seconds
-                self.logger.info(f"[{symbol}] 交易失败，设置 {self.cooldown_seconds//60} 分钟冷却期")
-
-            # 记录交易历史
-            self._record_trade(symbol, decision, trade_result)
+            self._handle_trade_result(symbol, decision, trade_result)
 
             return {
                 'success': True,
@@ -246,54 +188,12 @@ class AITradingEngine:
 
             self.logger.info(f"[{symbol}] [SEARCH] AI评估持仓...")
 
-            # 获取市场数据
-            market_data = self._gather_market_data(symbol)
-
-            # 获取账户信息（传递runtime_stats）
+            # 获取市场数据和账户信息
+            market_data = self._get_market_data(symbol)  # 复用之前创建的方法
             account_info = self._get_account_info(runtime_stats=runtime_stats)
 
             # 构建持仓信息
-            entry_price = float(position.get('entryPrice', 0))
-            current_price = market_data['current_price']
-            unrealized_pnl = float(position.get('unRealizedProfit', 0))
-            position_amt = float(position.get('positionAmt', 0))
-            leverage = int(position.get('leverage', 1))
-
-            # 计算持仓盈亏百分比（相对于名义价值）
-            notional_value = abs(position_amt) * entry_price
-            pnl_pct = (unrealized_pnl / notional_value * 100) if notional_value > 0 else 0
-
-            # 计算持仓时间
-            try:
-                update_time = int(position.get('updateTime', 0))
-                if update_time > 0:
-                    update_dt = datetime.fromtimestamp(update_time / 1000, tz=timezone.utc)
-                    holding_duration = datetime.now(timezone.utc) - update_dt
-                    holding_hours = holding_duration.total_seconds() / 3600
-                    holding_time_str = f"{holding_hours:.1f}小时"
-                else:
-                    holding_time_str = "未知"
-            except Exception:
-                holding_time_str = "未知"
-
-            # 判断持仓方向
-            if position_amt > 0:
-                position_side = 'LONG'
-            else:
-                position_side = 'SHORT'
-
-            position_info = {
-                'symbol': symbol,
-                'side': position_side,
-                'entry_price': entry_price,
-                'current_price': current_price,
-                'unrealized_pnl': unrealized_pnl,
-                'unrealized_pnl_pct': round(pnl_pct, 2),
-                'leverage': leverage,
-                'holding_time': holding_time_str,
-                'position_amt': abs(position_amt),
-                'notional_value': round(notional_value, 2)
-            }
+            position_info = self._build_position_info(symbol, position, market_data)
 
             self.logger.info(f"[{symbol}] 持仓: {position_side} {abs(position_amt)} ({leverage}x杠杆)")
             self.logger.info(f"[{symbol}] 开仓价: ${entry_price:.2f}, 当前价: ${current_price:.2f}")
@@ -842,6 +742,29 @@ class AITradingEngine:
                 recent_highs.append(closes[i])
         return sorted(recent_highs)[-3:] if recent_highs else []
 
+    def _check_win_rate(self, symbol: str):
+        """
+        检查并记录最近胜率
+        """
+        if len(self.trade_history) >= config.MIN_TRADES_FOR_WINRATE:
+            # 检查是否有真实交易（至少有一笔非零pnl）
+            has_real_trades = any(t.get('pnl', 0) != 0 for t in self.trade_history[-config.MIN_TRADES_FOR_WINRATE:])
+
+            if has_real_trades:
+                recent_win_rate = self._calculate_recent_win_rate(n=config.MIN_TRADES_FOR_WINRATE)
+                if recent_win_rate < config.LOW_WINRATE_THRESHOLD:
+                    self.logger.warning(
+                        f"[{symbol}] [WARNING] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率较低: {recent_win_rate * 100:.1f}% - AI将根据这个信息自主决策")
+                elif recent_win_rate > config.HIGH_WINRATE_THRESHOLD:
+                    self.logger.info(
+                        f"[{symbol}] [INFO] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率良好: {recent_win_rate * 100:.1f}%")
+                else:
+                    self.logger.info(
+                        f"[{symbol}] [INFO] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率: {recent_win_rate * 100:.1f}%")
+            else:
+                # 全新系统，无真实交易历史，不显示警告
+                self.logger.debug(f"[{symbol}] [DEBUG] 无有效交易历史，跳过胜率检查")
+
     def _calculate_recent_win_rate(self, n: int = 5) -> float:
         """
         计算最近N笔交易的胜率
@@ -877,6 +800,115 @@ class AITradingEngine:
             return round(sum(tr_list) / len(tr_list), 2) if tr_list else 0
         except Exception:
             return 0
+
+    def _get_market_data(self, symbol: str) -> Dict:
+        """
+        获取市场数据
+        """
+        self.logger.info(f"[{symbol}] 开始分析...")
+        
+        if self.enhanced_features_enabled and self.market_analyzer:
+            market_data = self.market_analyzer.get_comprehensive_market_context(symbol)
+            self.logger.debug(f"[{symbol}] [OK] 使用增强市场数据（包含历史序列、4h上下文、资金费率、持仓量）")
+        else:
+            market_data = self._gather_market_data(symbol)
+        
+        return market_data
+
+    def _get_ai_decision(self, symbol: str, market_data: Dict, account_info: Dict) -> Dict:
+        """
+        获取AI交易决策
+        """
+        use_reasoner = self._should_use_reasoner(symbol, market_data, account_info)
+        
+        if use_reasoner:
+            self.logger.info(f"[{symbol}] [深度分析] 调用 Ollama Model...")
+            ai_result = self.ollama_client.analyze_with_reasoning(
+                market_data=market_data,
+                account_info=account_info,
+                trade_history=self.trade_history[-10:]
+            )
+        else:
+            self.logger.info(f"[{symbol}] [快速分析] Ollama Model V3.1...")
+            ai_result = self.ollama_client.analyze_market_and_decide(
+                market_data,
+                account_info,
+                self.trade_history
+            )
+        
+        # AI调用后更新计数
+        if self.enhanced_features_enabled and self.runtime_manager:
+            self.runtime_manager.increment_ai_calls()
+        
+        return ai_result
+
+    def _handle_trade_result(self, symbol: str, decision: Dict, trade_result: Dict):
+        """
+        处理交易结果
+        """
+        # 如果交易失败，设置冷却期（防止重复尝试）
+        if not trade_result.get('success', False):
+            self.trade_cooldown[symbol] = time.time() + self.cooldown_seconds
+            self.logger.info(f"[{symbol}] 交易失败，设置 {self.cooldown_seconds//60} 分钟冷却期")
+        
+        # 记录交易历史
+        self._record_trade(symbol, decision, trade_result)
+
+    def _build_position_info(self, symbol: str, position: Dict, market_data: Dict) -> Dict:
+        """
+        构建持仓信息
+        
+        Args:
+            symbol: 交易对
+            position: 原始持仓数据
+            market_data: 市场数据
+            
+        Returns:
+            格式化的持仓信息
+        """
+        from datetime import datetime, timezone
+        
+        entry_price = float(position.get('entryPrice', 0))
+        current_price = market_data['current_price']
+        unrealized_pnl = float(position.get('unRealizedProfit', 0))
+        position_amt = float(position.get('positionAmt', 0))
+        leverage = int(position.get('leverage', 1))
+
+        # 计算持仓盈亏百分比（相对于名义价值）
+        notional_value = abs(position_amt) * entry_price
+        pnl_pct = (unrealized_pnl / notional_value * 100) if notional_value > 0 else 0
+
+        # 计算持仓时间
+        try:
+            update_time = int(position.get('updateTime', 0))
+            if update_time > 0:
+                update_dt = datetime.fromtimestamp(update_time / 1000, tz=timezone.utc)
+                holding_duration = datetime.now(timezone.utc) - update_dt
+                holding_hours = holding_duration.total_seconds() / 3600
+                holding_time_str = f"{holding_hours:.1f}小时"
+            else:
+                holding_time_str = "未知"
+        except Exception:
+            holding_time_str = "未知"
+
+        # 判断持仓方向
+        if position_amt > 0:
+            position_side = 'LONG'
+        else:
+            position_side = 'SHORT'
+
+        return {
+            'symbol': symbol,
+            'side': position_side,
+            'entry_price': entry_price,
+            'current_price': current_price,
+            'unrealized_pnl': unrealized_pnl,
+            'unrealized_pnl_pct': round(pnl_pct, 2),
+            'leverage': leverage,
+            'holding_time': holding_time_str,
+            'position_amt': abs(position_amt),
+            'notional_value': round(notional_value, 2)
+        }
 
     def _should_use_reasoner(self, symbol: str, market_data: Dict, account_info: Dict) -> bool:
         """
