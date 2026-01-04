@@ -17,6 +17,7 @@ import time
 from binance_client import BinanceClient
 from performance_tracker import PerformanceTracker
 from risk_manager import RiskManager
+import config
 
 # 加载环境变量
 load_dotenv()
@@ -37,9 +38,9 @@ def init_clients():
     global binance_client, performance_tracker, risk_manager
 
     if binance_client is None:
-        api_key = os.getenv('BINANCE_API_KEY')
-        api_secret = os.getenv('BINANCE_API_SECRET')
-        testnet = os.getenv('BINANCE_TESTNET', 'false').lower() == 'true'
+        api_key = config.Binance.API_KEY
+        api_secret = config.Binance.API_SECRET
+        testnet = config.Binance.TESTNET
 
         binance_client = BinanceClient(
             api_key=api_key,
@@ -54,7 +55,7 @@ def init_clients():
             print(f"[OK] Web仪表板: 从Binance API获取实际余额: ${initial_capital:,.2f}")
         except Exception as e:
             print(f"[WARNING] 无法获取Binance余额，使用配置文件默认值: {e}")
-            initial_capital = float(os.getenv('INITIAL_CAPITAL', 10000))
+            initial_capital = config.Trading.INITIAL_CAPITAL
 
         performance_tracker = PerformanceTracker(
             initial_capital=initial_capital,

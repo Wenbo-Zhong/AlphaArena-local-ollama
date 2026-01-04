@@ -44,30 +44,30 @@ class RiskManager:
             risk_config: 风险管理配置
         """
         # 资金风控限制
-        self.max_portfolio_risk = risk_config.get('max_portfolio_risk', config.MAX_PORTFOLIO_RISK)
-        self.max_position_size = risk_config.get('max_position_size', config.MAX_POSITION_SIZE)
-        self.max_leverage = risk_config.get('max_leverage', config.MAX_LEVERAGE)
+        self.max_portfolio_risk = risk_config.get('max_portfolio_risk', config.Risk.MAX_PORTFOLIO_RISK)
+        self.max_position_size = risk_config.get('max_position_size', config.Risk.MAX_POSITION_SIZE)
+        self.max_leverage = risk_config.get('max_leverage', config.Risk.MAX_LEVERAGE)
 
         # 止损止盈设置
-        self.default_stop_loss_pct = risk_config.get('default_stop_loss_pct', config.DEFAULT_STOP_LOSS_PCT)
-        self.default_take_profit_pct = risk_config.get('default_take_profit_pct', config.DEFAULT_TAKE_PROFIT_PCT)
-        self.trailing_stop_pct = risk_config.get('trailing_stop_pct', config.TRAILING_STOP_PCT)
+        self.default_stop_loss_pct = risk_config.get('default_stop_loss_pct', config.Risk.DEFAULT_STOP_LOSS_PCT)
+        self.default_take_profit_pct = risk_config.get('default_take_profit_pct', config.Risk.DEFAULT_TAKE_PROFIT_PCT)
+        self.trailing_stop_pct = risk_config.get('trailing_stop_pct', config.Risk.TRAILING_STOP_PCT)
 
         # 风险阈值
-        self.margin_call_threshold = risk_config.get('margin_call_threshold', config.MARGIN_CALL_THRESHOLD)
-        self.max_drawdown = risk_config.get('max_drawdown', config.MAX_DRAWDOWN)
-        self.max_daily_loss = risk_config.get('max_daily_loss', config.MAX_DAILY_LOSS)
+        self.margin_call_threshold = risk_config.get('margin_call_threshold', config.Risk.MARGIN_CALL_THRESHOLD)
+        self.max_drawdown = risk_config.get('max_drawdown', config.Risk.MAX_DRAWDOWN)
+        self.max_daily_loss = risk_config.get('max_daily_loss', config.Risk.MAX_DAILY_LOSS)
 
         # 仓位限制
-        self.max_open_positions = risk_config.get('max_open_positions', config.MAX_POSITIONS)
-        self.max_correlation = risk_config.get('max_correlation', config.MAX_CORRELATION)
+        self.max_open_positions = risk_config.get('max_open_positions', config.Risk.MAX_POSITIONS)
+        self.max_correlation = risk_config.get('max_correlation', config.Risk.MAX_CORRELATION)
 
         # 追踪数据
         self.daily_pnl = 0.0
         self.initial_balance = 0.0
         self.peak_balance = 0.0
         self.daily_trades = 0
-        self.max_daily_trades = risk_config.get('max_daily_trades', config.MAX_DAILY_TRADES)
+        self.max_daily_trades = risk_config.get('max_daily_trades', config.Risk.MAX_DAILY_TRADES)
 
     def calculate_position_size(self, account_balance: float, entry_price: float,
                                 stop_loss_price: float, risk_per_trade: float = None) -> float:

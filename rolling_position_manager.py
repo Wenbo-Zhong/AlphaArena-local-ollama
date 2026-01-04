@@ -12,10 +12,10 @@ class RollingPositionManager:
     """浮盈滚仓管理器"""
 
     def __init__(self,
-                 profit_threshold_pct: float = config.ROLLING_PROFIT_THRESHOLD_PCT,  # 盈利触发滚仓的百分比
-                 roll_ratio: float = config.ROLLING_RATIO,  # 每次滚仓使用浮盈的比例
-                 max_rolls: int = config.ROLLING_MAX_ROLLS,  # 最多滚仓次数
-                 min_roll_interval_minutes: int = config.ROLLING_MIN_INTERVAL_MINUTES):  # 最少滚仓间隔
+                 profit_threshold_pct: float = config.Rolling.ROLLING_PROFIT_THRESHOLD_PCT,  # 盈利触发滚仓的百分比
+                 roll_ratio: float = config.Rolling.ROLLING_RATIO,  # 每次滚仓使用浮盈的比例
+                 max_rolls: int = config.Rolling.ROLLING_MAX_ROLLS,  # 最多滚仓次数
+                 min_roll_interval_minutes: int = config.Rolling.ROLLING_MIN_INTERVAL_MINUTES):  # 最少滚仓间隔
         """
         初始化滚仓管理器
 

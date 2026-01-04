@@ -44,7 +44,7 @@ class AlphaArenaBot:
 
         # 账户信息显示时间控制
         self.last_account_display_time = 0
-        self.account_display_interval = config.ACCOUNT_DISPLAY_INTERVAL_SECONDS
+        self.account_display_interval = config.Trading.ACCOUNT_DISPLAY_INTERVAL_SECONDS
 
         # [NEW] 系统运行统计（每次重启后重新计数）
         self.start_time = datetime.now()
@@ -88,31 +88,30 @@ class AlphaArenaBot:
         load_dotenv()
 
         # Binance 配置
-        self.binance_api_key = os.getenv('BINANCE_API_KEY')
-        self.binance_api_secret = os.getenv('BINANCE_API_SECRET')
-        self.testnet = os.getenv('BINANCE_TESTNET', 'false').lower() == 'true'
+        self.binance_api_key = config.Binance.API_KEY
+        self.binance_api_secret = config.Binance.API_SECRET
+        self.testnet = config.Binance.TESTNET
 
         # v2ray 配置
-        self.using_v2ray = os.getenv('USING_V2RAY_PROXY', 1)
-        self.v2ray_port = os.getenv('V2RAY_PORT', 10808)
+        self.using_v2ray = config.Binance.USING_V2RAY
+        self.v2ray_port = config.Binance.V2RAY_PORT
 
         # ollama 配置
-        self.ollama_api_key = os.getenv('OLLAMA_API_KEY')
-        self.ollama_max_tokens = os.getenv('OLLAMA_MAX_TOKENS', 32768)
-        self.ollama_temperature = os.getenv('OLLAMA_TEMPERATURE', 0.3)
-        self.ollama_api_timeout = os.getenv('OLLAMA_API_TIMEOUT', 150)
-        self.ollama_api_port = os.getenv('OLLAMA_API_PORT', 11434)
-        self.ollama_model_name = os.getenv('OLLAMA_MODEL_NAME', '')
+        self.ollama_api_key = config.Ollama.API_KEY
+        self.ollama_max_tokens = config.Ollama.MAX_TOKENS
+        self.ollama_temperature = config.Ollama.TEMPERATURE
+        self.ollama_api_timeout = config.Ollama.API_TIMEOUT
+        self.ollama_api_port = config.Ollama.API_PORT
+        self.ollama_model_name = config.Ollama.MODEL_NAME
 
         # 交易配置
-        self.initial_capital = float(os.getenv('INITIAL_CAPITAL', 10000))
-        self.max_position_pct = float(os.getenv('MAX_POSITION_PCT', 10))
-        self.default_leverage = int(os.getenv('DEFAULT_LEVERAGE', 3))
-        self.trading_interval = int(os.getenv('TRADING_INTERVAL_SECONDS', 300))
+        self.initial_capital = config.Trading.INITIAL_CAPITAL
+        self.max_position_pct = config.Trading.MAX_POSITION_PCT
+        self.default_leverage = config.Trading.DEFAULT_LEVERAGE
+        self.trading_interval = config.Trading.TRADING_INTERVAL_SECONDS
 
         # 交易对
-        symbols_str = os.getenv('TRADING_SYMBOLS', 'BTCUSDT,ETHUSDT')
-        self.trading_symbols = [s.strip() for s in symbols_str.split(',')]
+        self.trading_symbols = config.Trading.TRADING_SYMBOLS
 
         self.logger.info(f"配置加载完成: {len(self.trading_symbols)} 个交易对")
 
@@ -143,15 +142,15 @@ class AlphaArenaBot:
 
         # 风险管理器
         risk_config = {
-            'max_portfolio_risk': config.MAX_PORTFOLIO_RISK,
-            'max_position_size': config.MAX_POSITION_SIZE,
-            'max_leverage': config.MAX_LEVERAGE,  # 统一为50倍，与AI决策范围一致
-            'default_stop_loss_pct': config.DEFAULT_STOP_LOSS_PCT,  # 1.5%止损，与交易策略一致
-            'default_take_profit_pct': config.DEFAULT_TAKE_PROFIT_PCT,  # 5%止盈
-            'max_drawdown': config.MAX_DRAWDOWN,
-            'max_daily_loss': config.MAX_DAILY_LOSS,
-            'max_open_positions': config.MAX_POSITIONS,
-            'max_daily_trades': config.MAX_DAILY_TRADES
+            'max_portfolio_risk': config.Risk.MAX_PORTFOLIO_RISK,
+            'max_position_size': config.Risk.MAX_POSITION_SIZE,
+            'max_leverage': config.Risk.MAX_LEVERAGE,  # 统一为50倍，与AI决策范围一致
+            'default_stop_loss_pct': config.Risk.DEFAULT_STOP_LOSS_PCT,  # 1.5%止损，与交易策略一致
+            'default_take_profit_pct': config.Risk.DEFAULT_TAKE_PROFIT_PCT,  # 5%止盈
+            'max_drawdown': config.Risk.MAX_DRAWDOWN,
+            'max_daily_loss': config.Risk.MAX_DAILY_LOSS,
+            'max_open_positions': config.Risk.MAX_POSITIONS,
+            'max_daily_trades': config.Risk.MAX_DAILY_TRADES
         }
         self.risk_manager = RiskManager(risk_config)
 
@@ -166,10 +165,10 @@ class AlphaArenaBot:
 
         # [NEW V3.5] 浮盈滚仓管理器 - 2分钟超短线策略 (激进配置)
         self.rolling_manager = RollingPositionManager(
-            profit_threshold_pct=config.ROLLING_PROFIT_THRESHOLD_PCT,  # 盈利触发滚仓的百分比
-            roll_ratio=config.ROLLING_RATIO,  # 每次滚仓使用浮盈的比例
-            max_rolls=config.ROLLING_MAX_ROLLS,  # 最多滚仓次数
-            min_roll_interval_minutes=config.ROLLING_MIN_INTERVAL_MINUTES  # 最少滚仓间隔
+            profit_threshold_pct=config.Rolling.ROLLING_PROFIT_THRESHOLD_PCT,  # 盈利触发滚仓的百分比
+            roll_ratio=config.Rolling.ROLLING_RATIO,  # 每次滚仓使用浮盈的比例
+            max_rolls=config.Rolling.ROLLING_MAX_ROLLS,  # 最多滚仓次数
+            min_roll_interval_minutes=config.Rolling.ROLLING_MIN_INTERVAL_MINUTES  # 最少滚仓间隔
         )
         self.logger.info("[OK] 🔥 激进滚仓管理器已启动 (盈利>0.8%触发, 最多滚3次, 60%加仓)")
 

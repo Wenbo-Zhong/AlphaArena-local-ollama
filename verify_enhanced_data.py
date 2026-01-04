@@ -4,6 +4,7 @@
 import os
 import sys
 from dotenv import load_dotenv
+import config
 
 # 加载环境变量
 load_dotenv()
@@ -14,9 +15,9 @@ from market_analyzer import MarketAnalyzer
 def main():
     # 创建客户端
     client = BinanceClient(
-        os.getenv('BINANCE_API_KEY'),
-        os.getenv('BINANCE_API_SECRET'),
-        testnet=False
+        config.Binance.API_KEY,
+        config.Binance.API_SECRET,
+        testnet=config.Binance.TESTNET
     )
     analyzer = MarketAnalyzer(client)
 
