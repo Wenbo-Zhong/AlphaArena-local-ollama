@@ -4,17 +4,18 @@
 """
 
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, List
+import config
 
 
 class RollingPositionManager:
     """浮盈滚仓管理器"""
 
     def __init__(self,
-                 profit_threshold_pct: float = 3.0,  # 盈利>3%时触发滚仓
-                 roll_ratio: float = 0.5,  # 每次加仓比例(现有仓位的50%)
-                 max_rolls: int = 2,  # 最多滚仓次数
-                 min_roll_interval_minutes: int = 5):  # 最小滚仓间隔
+                 profit_threshold_pct: float = config.ROLLING_PROFIT_THRESHOLD_PCT,  # 盈利触发滚仓的百分比
+                 roll_ratio: float = config.ROLLING_RATIO,  # 每次滚仓使用浮盈的比例
+                 max_rolls: int = config.ROLLING_MAX_ROLLS,  # 最多滚仓次数
+                 min_roll_interval_minutes: int = config.ROLLING_MIN_INTERVAL_MINUTES):  # 最少滚仓间隔
         """
         初始化滚仓管理器
 

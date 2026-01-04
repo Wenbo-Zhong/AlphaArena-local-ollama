@@ -53,9 +53,27 @@ TRADE_COOLDOWN_SECONDS = 900  # 失败后冷却15分钟
 # ==================== 风险管理配置 ====================
 
 MAX_PORTFOLIO_RISK = 0.02  # 单笔交易最大风险（2%）
+MAX_POSITION_SIZE = float(os.getenv('MAX_POSITION_PCT', 10)) / 100  # 最大持仓比例
+MAX_LEVERAGE = 50  # 最大杠杆倍数
 MAX_DRAWDOWN = 0.15  # 最大回撤（15%）
 MAX_DAILY_LOSS = 0.05  # 每日最大亏损（5%）
 MAX_POSITIONS = 10  # 最大持仓数量
+MAX_DAILY_TRADES = 100  # 每日最大交易次数
+
+# AI决策相关配置
+MIN_TRADES_FOR_WINRATE = 5  # 计算胜率所需的最少交易次数
+LOW_WINRATE_THRESHOLD = 0.4  # 低胜率阈值（40%）
+HIGH_WINRATE_THRESHOLD = 0.6  # 高胜率阈值（60%）
+DEFAULT_AI_STOP_LOSS_PCT = 0.01  # AI未提供止损时的默认值（1%）
+DEFAULT_AI_TAKE_PROFIT_PCT = 0.02  # AI未提供止盈时的默认值（2%）
+
+# AI模型配置
+CHAT_MODEL_INTERVAL_SECONDS = 120  # 快速反应模型分析间隔（秒）
+REASONER_MODEL_INTERVAL_SECONDS = 300  # 深度分析模型分析间隔（秒）
+
+# 显示配置
+ACCOUNT_DISPLAY_INTERVAL_SECONDS = 120  # 账户信息显示间隔（秒）
+FORCE_CLOSE_PROFIT_TARGET_USD = 2.0  # 强制止盈目标（美元）
 
 # ==================== 性能追踪配置 ====================
 
@@ -63,7 +81,37 @@ PERFORMANCE_DATA_FILE = 'performance_data.json'
 AI_DECISIONS_FILE = 'ai_decisions.json'
 LOG_CONFIG_FILE = 'log_config.json'
 
+# ==================== Ollama 配置 ====================
+
+# Ollama API 配置
+OLLAMA_MAX_TOKENS = int(os.getenv('OLLAMA_MAX_TOKENS', '32768'))  # 最大令牌数
+OLLAMA_TEMPERATURE = float(os.getenv('OLLAMA_TEMPERATURE', '0.3'))  # 温度参数
+OLLAMA_API_TIMEOUT = int(os.getenv('OLLAMA_API_TIMEOUT', '150'))  # API超时时间（秒）
+OLLAMA_API_PORT = int(os.getenv('OLLAMA_API_PORT', '11434'))  # API端口
+
 # ==================== 高级功能配置 ====================
 
 # 高级仓位管理策略
 ENABLE_ADVANCED_STRATEGIES = True  # 是否启用高级策略（ROLL, PYRAMID等）
+
+# ==================== 滚仓策略配置 ====================
+
+# 激进滚仓配置
+ROLLING_PROFIT_THRESHOLD_PCT = 0.8  # 盈利触发滚仓的百分比（%）
+ROLLING_RATIO = 0.6  # 每次滚仓使用浮盈的比例
+ROLLING_MAX_ROLLS = 3  # 最多滚仓次数
+ROLLING_MIN_INTERVAL_MINUTES = 1  # 最少滚仓间隔（分钟）
+
+# ==================== 止损止盈配置 ====================
+
+# ATR动态止损
+ATR_MULTIPLIER = 2.0  # ATR倍数
+
+# 默认止损止盈百分比
+DEFAULT_STOP_LOSS_PCT = 0.015  # 默认止损百分比（1.5%）
+DEFAULT_TAKE_PROFIT_PCT = 0.05  # 默认止盈百分比（5%）
+TRAILING_STOP_PCT = 0.01  # 移动止损百分比（1%）
+
+# 风险阈值
+MARGIN_CALL_THRESHOLD = 0.8  # 保证金率警戒阈值（80%）
+MAX_CORRELATION = 0.7  # 最大相关性阈值（0.7）

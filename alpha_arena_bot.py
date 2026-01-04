@@ -13,13 +13,14 @@ from typing import List, Dict
 import signal
 
 # 导入模块
+import config
 from binance_client import BinanceClient
 from market_analyzer import MarketAnalyzer
 from risk_manager import RiskManager
 from ai_trading_engine import AITradingEngine
 from performance_tracker import PerformanceTracker
 from pro_log_formatter import ProTradingFormatter
-from roll_tracker import RollTracker  #  ROLL状态追踪器，用于跟踪滚仓次数和状态，避免过度杠杆
+from roll_tracker import RollTracker  # ROLL状态追踪器，用于跟踪滚仓次数和状态，避免过度杠杆
 from advanced_position_manager import AdvancedPositionManager  # [NEW V2.0] 高级仓位管理
 from rolling_position_manager import RollingPositionManager  # [NEW V3.0] 浮盈滚仓管理器
 
@@ -41,9 +42,9 @@ class AlphaArenaBot:
         # 运行标志
         self.running = True
 
-        # 账户信息显示时间控制（每120秒显示一次）
+        # 账户信息显示时间控制
         self.last_account_display_time = 0
-        self.account_display_interval = 120  # 秒
+        self.account_display_interval = config.ACCOUNT_DISPLAY_INTERVAL_SECONDS
 
         # [NEW] 系统运行统计（每次重启后重新计数）
         self.start_time = datetime.now()
@@ -142,15 +143,15 @@ class AlphaArenaBot:
 
         # 风险管理器
         risk_config = {
-            'max_portfolio_risk': 0.02,
-            'max_position_size': self.max_position_pct / 100,
-            'max_leverage': 50,  # 统一为50倍，与AI决策范围一致
-            'default_stop_loss_pct': 0.015,  # 1.5%止损，与交易策略一致
-            'default_take_profit_pct': 0.05,  # 5%止盈
-            'max_drawdown': 0.15,
-            'max_daily_loss': 0.05,
-            'max_open_positions': 10,
-            'max_daily_trades': 100
+            'max_portfolio_risk': config.MAX_PORTFOLIO_RISK,
+            'max_position_size': config.MAX_POSITION_SIZE,
+            'max_leverage': config.MAX_LEVERAGE,  # 统一为50倍，与AI决策范围一致
+            'default_stop_loss_pct': config.DEFAULT_STOP_LOSS_PCT,  # 1.5%止损，与交易策略一致
+            'default_take_profit_pct': config.DEFAULT_TAKE_PROFIT_PCT,  # 5%止盈
+            'max_drawdown': config.MAX_DRAWDOWN,
+            'max_daily_loss': config.MAX_DAILY_LOSS,
+            'max_open_positions': config.MAX_POSITIONS,
+            'max_daily_trades': config.MAX_DAILY_TRADES
         }
         self.risk_manager = RiskManager(risk_config)
 
@@ -165,10 +166,10 @@ class AlphaArenaBot:
 
         # [NEW V3.5] 浮盈滚仓管理器 - 2分钟超短线策略 (激进配置)
         self.rolling_manager = RollingPositionManager(
-            profit_threshold_pct=0.8,  # 盈利>0.8%触发滚仓 (极低门槛,更激进)
-            roll_ratio=0.6,  # 每次加仓60% (更大比例)
-            max_rolls=3,  # 最多滚3次 (更多次数)
-            min_roll_interval_minutes=1  # 最少间隔1分钟 (极速滚仓)
+            profit_threshold_pct=config.ROLLING_PROFIT_THRESHOLD_PCT,  # 盈利触发滚仓的百分比
+            roll_ratio=config.ROLLING_RATIO,  # 每次滚仓使用浮盈的比例
+            max_rolls=config.ROLLING_MAX_ROLLS,  # 最多滚仓次数
+            min_roll_interval_minutes=config.ROLLING_MIN_INTERVAL_MINUTES  # 最少滚仓间隔
         )
         self.logger.info("[OK] 🔥 激进滚仓管理器已启动 (盈利>0.8%触发, 最多滚3次, 60%加仓)")
 

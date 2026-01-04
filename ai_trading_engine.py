@@ -8,7 +8,7 @@ from datetime import datetime
 import logging
 import time
 import pandas as pd
-import os
+import config
 
 from ollama_client import OllamaClient
 from binance_client import BinanceClient
@@ -33,8 +33,8 @@ class AITradingEngine:
                  market_analyzer: MarketAnalyzer, risk_manager: RiskManager,
                  performance_tracker=None, roll_tracker=None,
                  enable_enhanced_features: bool = True,
-                 ollama_max_tokens: int = 32768, ollama_temperature = 0.3,
-                 ollama_api_timeout: int = 150, ollama_api_port: int = 11434,
+                 ollama_max_tokens: int = config.OLLAMA_MAX_TOKENS, ollama_temperature=config.OLLAMA_TEMPERATURE,
+                 ollama_api_timeout: int = config.OLLAMA_API_TIMEOUT, ollama_api_port: int = config.OLLAMA_API_PORT,
                  ollama_model_name: str = ''):
         """
         初始化 AI 交易引擎
@@ -63,19 +63,19 @@ class AITradingEngine:
         self.adv_position_manager = AdvancedPositionManager(binance_client, market_analyzer)
 
         # [NEW] ATR动态追踪止损管理器
-        self.trailing_stop_manager = TrailingStopManager(atr_multiplier=2.0)
-        self.logger.info("[OK] ATR动态止损管理器已启用（ATR倍数: 2.0x）")
+        self.trailing_stop_manager = TrailingStopManager(atr_multiplier=config.ATR_MULTIPLIER)
+        self.logger.info(f"[OK] ATR动态止损管理器已启用（ATR倍数: {config.ATR_MULTIPLIER}x）")
 
         # 交易冷却期 (symbol -> timestamp)
         # 防止在短时间内重复尝试失败的交易
         self.trade_cooldown = {}
-        self.cooldown_seconds = 900  # 15分钟冷却期
+        self.cooldown_seconds = config.TRADE_COOLDOWN_SECONDS  # 15分钟冷却期
 
         # 推理模型时间跟踪
         # Chat模型: 每120秒分析（快速反应）
         # Reasoner模型: 每300秒深度分析（重大决策）
         self.last_reasoner_time = 0
-        self.reasoner_interval = 600  # 10分钟执行一次Reasoner（降低成本）
+        self.reasoner_interval = config.REASONER_INTERVAL_SECONDS  # 10分钟执行一次Reasoner（降低成本）
 
         # [NEW] 增强功能初始化
         self.enhanced_features_enabled = enable_enhanced_features and ENHANCED_FEATURES_AVAILABLE
@@ -130,18 +130,21 @@ class AITradingEngine:
 
             # 1. 检查最近胜率（仅在有足够交易历史时显示）
             # [V3.4 FIX] 只有在有真实交易记录（pnl不全为0）时才显示胜率警告
-            if len(self.trade_history) >= 5:
+            if len(self.trade_history) >= config.MIN_TRADES_FOR_WINRATE:
                 # 检查是否有真实交易（至少有一笔非零pnl）
-                has_real_trades = any(t.get('pnl', 0) != 0 for t in self.trade_history[-5:])
+                has_real_trades = any(t.get('pnl', 0) != 0 for t in self.trade_history[-config.MIN_TRADES_FOR_WINRATE:])
 
                 if has_real_trades:
-                    recent_win_rate = self._calculate_recent_win_rate(n=5)
-                    if recent_win_rate < 0.4:
-                        self.logger.warning(f"[{symbol}] [WARNING] 近5笔胜率较低: {recent_win_rate*100:.1f}% - AI将根据这个信息自主决策")
-                    elif recent_win_rate > 0.6:
-                        self.logger.info(f"[{symbol}] [INFO] 近5笔胜率良好: {recent_win_rate*100:.1f}%")
+                    recent_win_rate = self._calculate_recent_win_rate(n=config.MIN_TRADES_FOR_WINRATE)
+                    if recent_win_rate < config.LOW_WINRATE_THRESHOLD:
+                        self.logger.warning(
+                            f"[{symbol}] [WARNING] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率较低: {recent_win_rate * 100:.1f}% - AI将根据这个信息自主决策")
+                    elif recent_win_rate > config.HIGH_WINRATE_THRESHOLD:
+                        self.logger.info(
+                            f"[{symbol}] [INFO] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率良好: {recent_win_rate * 100:.1f}%")
                     else:
-                        self.logger.info(f"[{symbol}] [INFO] 近5笔胜率: {recent_win_rate*100:.1f}%")
+                        self.logger.info(
+                            f"[{symbol}] [INFO] 近{config.MIN_TRADES_FOR_WINRATE}笔胜率: {recent_win_rate * 100:.1f}%")
                 else:
                     # 全新系统，无真实交易历史，不显示警告
                     self.logger.debug(f"[{symbol}] [DEBUG] 无有效交易历史，跳过胜率检查")
@@ -442,18 +445,19 @@ class AITradingEngine:
         leverage = int(leverage)
 
         # 🔒 杠杆上限 - 最大20倍（与Ollama Model提示词保持一致）
-        MAX_LEVERAGE = 50  # 强制最大50倍杠杆
-        if leverage > MAX_LEVERAGE:
-            self.logger.warning(f"[WARNING] AI建议杠杆{leverage}x超过上限{MAX_LEVERAGE}x，已强制降至{MAX_LEVERAGE}x")
-            leverage = MAX_LEVERAGE
-        elif leverage < MAX_LEVERAGE:
+        if leverage > config.MAX_LEVERAGE:
+            self.logger.warning(
+                f"[WARNING] AI建议杠杆{leverage}x超过上限{config.MAX_LEVERAGE}x，已强制降至{config.MAX_LEVERAGE}x")
+            leverage = config.MAX_LEVERAGE
+        elif leverage < config.MAX_LEVERAGE:
             self.logger.info(f"[INFO] AI建议杠杆{leverage}")
         elif leverage < 1:
             self.logger.warning(f"[WARNING] AI建议杠杆{leverage}x过低，已强制调至1x")
             leverage = 1
 
-        stop_loss_pct = decision.get('stop_loss_pct', 1) / 100  # AI未返回时最保守1%止损
-        take_profit_pct = decision.get('take_profit_pct', 2) / 100  # AI未返回时最保守2%止盈
+        stop_loss_pct = decision.get('stop_loss_pct', config.DEFAULT_AI_STOP_LOSS_PCT * 100) / 100  # AI未返回时最保守1%止损
+        take_profit_pct = decision.get('take_profit_pct',
+                                       config.DEFAULT_AI_TAKE_PROFIT_PCT * 100) / 100  # AI未返回时最保守2%止盈
 
         # 获取账户余额
         balance = self.binance.get_futures_usdt_balance()

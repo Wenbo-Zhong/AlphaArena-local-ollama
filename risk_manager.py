@@ -7,6 +7,7 @@ from typing import Dict, Optional, Tuple, List
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
+import config
 
 
 class RiskLevel(Enum):
@@ -35,38 +36,38 @@ class PositionRisk:
 class RiskManager:
     """交易风险管理器"""
 
-    def __init__(self, config: Dict):
+    def __init__(self, risk_config: Dict):
         """
         初始化风险管理器
 
         Args:
-            config: 风险管理配置
+            risk_config: 风险管理配置
         """
         # 资金风控限制
-        self.max_portfolio_risk = config.get('max_portfolio_risk', 0.02)  # 单次最大风险2%
-        self.max_position_size = config.get('max_position_size', 0.1)  # 单仓位最大10%
-        self.max_leverage = config.get('max_leverage', 10)  # 最大杠杆10倍
+        self.max_portfolio_risk = risk_config.get('max_portfolio_risk', config.MAX_PORTFOLIO_RISK)
+        self.max_position_size = risk_config.get('max_position_size', config.MAX_POSITION_SIZE)
+        self.max_leverage = risk_config.get('max_leverage', config.MAX_LEVERAGE)
 
         # 止损止盈设置
-        self.default_stop_loss_pct = config.get('default_stop_loss_pct', 0.02)  # 默认止损2%
-        self.default_take_profit_pct = config.get('default_take_profit_pct', 0.04)  # 默认止盈4%
-        self.trailing_stop_pct = config.get('trailing_stop_pct', 0.01)  # 移动止损1%
+        self.default_stop_loss_pct = risk_config.get('default_stop_loss_pct', config.DEFAULT_STOP_LOSS_PCT)
+        self.default_take_profit_pct = risk_config.get('default_take_profit_pct', config.DEFAULT_TAKE_PROFIT_PCT)
+        self.trailing_stop_pct = risk_config.get('trailing_stop_pct', config.TRAILING_STOP_PCT)
 
         # 风险阈值
-        self.margin_call_threshold = config.get('margin_call_threshold', 0.8)  # 保证金率80%警戒
-        self.max_drawdown = config.get('max_drawdown', 0.15)  # 最大回撤15%
-        self.max_daily_loss = config.get('max_daily_loss', 0.05)  # 每日最大亏损5%
+        self.margin_call_threshold = risk_config.get('margin_call_threshold', config.MARGIN_CALL_THRESHOLD)
+        self.max_drawdown = risk_config.get('max_drawdown', config.MAX_DRAWDOWN)
+        self.max_daily_loss = risk_config.get('max_daily_loss', config.MAX_DAILY_LOSS)
 
         # 仓位限制
-        self.max_open_positions = config.get('max_open_positions', 10)  # 最多10个持仓
-        self.max_correlation = config.get('max_correlation', 0.7)  # 最大相关性0.7
+        self.max_open_positions = risk_config.get('max_open_positions', config.MAX_POSITIONS)
+        self.max_correlation = risk_config.get('max_correlation', config.MAX_CORRELATION)
 
         # 追踪数据
         self.daily_pnl = 0.0
         self.initial_balance = 0.0
         self.peak_balance = 0.0
         self.daily_trades = 0
-        self.max_daily_trades = config.get('max_daily_trades', 50)
+        self.max_daily_trades = risk_config.get('max_daily_trades', config.MAX_DAILY_TRADES)
 
     def calculate_position_size(self, account_balance: float, entry_price: float,
                                 stop_loss_price: float, risk_per_trade: float = None) -> float:
