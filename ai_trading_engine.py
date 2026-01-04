@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import logging
 import time
+import math
 import pandas as pd
 import config
 
@@ -441,6 +442,29 @@ class AITradingEngine:
             self.logger.error(f"执行交易失败: {e}")
             return {'success': False, 'error': str(e)}
 
+    def _get_default_precision(self, symbol: str) -> tuple:
+        """
+        获取交易对的默认精度和最小数量
+        
+        Args:
+            symbol: 交易对符号（如 BTCUSDT）
+            
+        Returns:
+            tuple: (precision, min_qty) 精度和最小数量
+        """
+        if 'BTC' in symbol:
+            return 3, 0.001  # BTC: 0.001
+        elif 'ETH' in symbol:
+            return 3, 0.001  # ETH: 0.001
+        elif 'BNB' in symbol:
+            return 1, 0.1    # BNB: 0.1
+        elif 'SOL' in symbol:
+            return 1, 0.1    # SOL: 0.1
+        elif 'DOGE' in symbol:
+            return 0, 1.0    # DOGE: 整数
+        else:
+            return 1, 0.1    # 默认: 0.1
+
     def _open_long_position(self, symbol: str, amount: float, leverage: int,
                            stop_loss_pct: float, take_profit_pct: float) -> Dict:
         """开多单"""
@@ -449,25 +473,24 @@ class AITradingEngine:
             current_price = self.market_analyzer.get_current_price(symbol)
 
             # [CONFIG] 智能杠杆调整：同时满足币安名义价值和精度要求
-            # 先确定精度规则
-            if 'BTC' in symbol:
-                precision = 3  # BTC: 0.001
-                min_qty = 0.001
-            elif 'ETH' in symbol:
-                precision = 3  # ETH: 0.001
-                min_qty = 0.001
-            elif 'BNB' in symbol:
-                precision = 1  # BNB: 0.1
-                min_qty = 0.1
-            elif 'SOL' in symbol:
-                precision = 1  # SOL: 0.1
-                min_qty = 0.1
-            elif 'DOGE' in symbol:
-                precision = 0  # DOGE: 整数
-                min_qty = 1.0
-            else:
-                precision = 1  # 默认: 0.1
-                min_qty = 0.1
+            # 从Binance API获取交易对的实际精度信息
+            try:
+                exchange_info = self.binance.get_futures_exchange_info(symbol=symbol)
+                if exchange_info and 'filters' in exchange_info:
+                    # 查找最小数量过滤器
+                    lot_size_filter = next((f for f in exchange_info['filters'] if f['filterType'] == 'LOT_SIZE'), None)
+                    if lot_size_filter:
+                        min_qty = float(lot_size_filter['minQty'])
+                        # 计算精度：小数点后的位数
+                        step_size = float(lot_size_filter['stepSize'])
+                        precision = abs(int(round(math.log10(step_size)))) if step_size != 0 else 1
+                    else:
+                        # 默认精度规则
+                        precision, min_qty = self._get_default_precision(symbol)
+            except Exception as e:
+                self.logger.warning(f"获取交易对精度信息失败，使用默认规则: {e}")
+                # 使用默认精度规则
+                precision, min_qty = self._get_default_precision(symbol)
 
             # 计算满足精度要求所需的最小名义价值
             min_notional_for_precision = min_qty * current_price
@@ -476,7 +499,7 @@ class AITradingEngine:
             # 计算所需杠杆
             required_leverage = int(min_notional / amount) + 1
             original_leverage = leverage
-            leverage = min(max(leverage, required_leverage), 50)  # 强制50倍杠杆
+            leverage = min(max(leverage, required_leverage), config.Risk.MAX_LEVERAGE)  # 强制最大杠杆倍数
 
             if leverage != original_leverage:
                 self.logger.info(f"[IDEA] [{symbol}] 智能杠杆调整: {original_leverage}x → {leverage}x "
@@ -489,24 +512,18 @@ class AITradingEngine:
             # 计算数量并按交易对调整精度
             raw_quantity = (amount * leverage) / current_price
 
-            # 根据交易对设置精度（币安合约规则）
-            if 'BTC' in symbol:
-                quantity = round(raw_quantity, 3)  # BTC: 0.001
-            elif 'ETH' in symbol:
-                quantity = round(raw_quantity, 3)  # ETH: 0.001
-            elif 'BNB' in symbol:
-                quantity = round(raw_quantity, 1)  # BNB: 0.1
-            elif 'SOL' in symbol:
-                quantity = round(raw_quantity, 1)  # SOL: 0.1
-            elif 'DOGE' in symbol:
-                quantity = round(raw_quantity, 0)  # DOGE: 整数
-            else:
-                quantity = round(raw_quantity, 1)  # 默认: 0.1 (大多数山寨币)
+            # 使用动态获取的精度调整仓位大小
+            quantity = round(raw_quantity, precision)
 
             # 确保不为0（小账户可能出现）
             if quantity == 0:
                 self.logger.warning(f"{symbol} 计算数量为0，账户太小无法交易")
                 return {'success': False, 'error': '账户余额太小，无法满足最低交易量'}
+            
+            # 确保数量不小于币安的最小数量要求
+            if quantity < min_qty:
+                self.logger.info(f"{symbol} 计算数量 {quantity:.6f} 小于最小数量要求 {min_qty:.6f}，调整至最小数量")
+                quantity = min_qty
 
             # 计算止损止盈价格（四舍五入到2位小数，USDT精度要求）
             stop_loss = round(current_price * (1 - stop_loss_pct), 2)
@@ -567,25 +584,24 @@ class AITradingEngine:
             current_price = self.market_analyzer.get_current_price(symbol)
 
             # [CONFIG] 智能杠杆调整：同时满足币安名义价值和精度要求
-            # 先确定精度规则
-            if 'BTC' in symbol:
-                precision = 3  # BTC: 0.001
-                min_qty = 0.001
-            elif 'ETH' in symbol:
-                precision = 3  # ETH: 0.001
-                min_qty = 0.001
-            elif 'BNB' in symbol:
-                precision = 1  # BNB: 0.1
-                min_qty = 0.1
-            elif 'SOL' in symbol:
-                precision = 1  # SOL: 0.1
-                min_qty = 0.1
-            elif 'DOGE' in symbol:
-                precision = 0  # DOGE: 整数
-                min_qty = 1.0
-            else:
-                precision = 1  # 默认: 0.1
-                min_qty = 0.1
+            # 从Binance API获取交易对的实际精度信息
+            try:
+                exchange_info = self.binance.get_futures_exchange_info(symbol=symbol)
+                if exchange_info and 'filters' in exchange_info:
+                    # 查找最小数量过滤器
+                    lot_size_filter = next((f for f in exchange_info['filters'] if f['filterType'] == 'LOT_SIZE'), None)
+                    if lot_size_filter:
+                        min_qty = float(lot_size_filter['minQty'])
+                        # 计算精度：小数点后的位数
+                        step_size = float(lot_size_filter['stepSize'])
+                        precision = abs(int(round(math.log10(step_size)))) if step_size != 0 else 1
+                    else:
+                        # 默认精度规则
+                        precision, min_qty = self._get_default_precision(symbol)
+            except Exception as e:
+                self.logger.warning(f"获取交易对精度信息失败，使用默认规则: {e}")
+                # 使用默认精度规则
+                precision, min_qty = self._get_default_precision(symbol)
 
             # 计算满足精度要求所需的最小名义价值
             min_notional_for_precision = min_qty * current_price
@@ -594,7 +610,7 @@ class AITradingEngine:
             # 计算所需杠杆
             required_leverage = int(min_notional / amount) + 1
             original_leverage = leverage
-            leverage = min(max(leverage, required_leverage), 50)  # 强制50倍杠杆
+            leverage = min(max(leverage, required_leverage), config.Risk.MAX_LEVERAGE)  # 强制最大杠杆倍数
 
             if leverage != original_leverage:
                 self.logger.info(f"[IDEA] [{symbol}] 智能杠杆调整: {original_leverage}x → {leverage}x "
@@ -607,24 +623,18 @@ class AITradingEngine:
             # 计算数量并按交易对调整精度
             raw_quantity = (amount * leverage) / current_price
 
-            # 根据交易对设置精度（币安合约规则）
-            if 'BTC' in symbol:
-                quantity = round(raw_quantity, 3)  # BTC: 0.001
-            elif 'ETH' in symbol:
-                quantity = round(raw_quantity, 3)  # ETH: 0.001
-            elif 'BNB' in symbol:
-                quantity = round(raw_quantity, 1)  # BNB: 0.1
-            elif 'SOL' in symbol:
-                quantity = round(raw_quantity, 1)  # SOL: 0.1
-            elif 'DOGE' in symbol:
-                quantity = round(raw_quantity, 0)  # DOGE: 整数
-            else:
-                quantity = round(raw_quantity, 1)  # 默认: 0.1 (大多数山寨币)
+            # 使用动态获取的精度调整仓位大小
+            quantity = round(raw_quantity, precision)
 
             # 确保不为0（小账户可能出现）
             if quantity == 0:
                 self.logger.warning(f"{symbol} 计算数量为0，账户太小无法交易")
                 return {'success': False, 'error': '账户余额太小，无法满足最低交易量'}
+
+            # 确保数量不小于币安的最小数量要求
+            if quantity < min_qty:
+                self.logger.info(f"{symbol} 计算数量 {quantity:.6f} 小于最小数量要求 {min_qty:.6f}，调整至最小数量")
+                quantity = min_qty
 
             # 计算止损止盈价格（四舍五入到2位小数，USDT精度要求）
             stop_loss = round(current_price * (1 + stop_loss_pct), 2)

@@ -718,19 +718,35 @@ class AlphaArenaBot:
 
             # 3. 使用AI指定的杠杆开新仓位
             new_leverage = decision.get('leverage', 10)
-            new_leverage = max(1, min(30, new_leverage))
+            new_leverage = max(1, min(config.Risk.MAX_LEVERAGE, new_leverage))
 
             # 获取当前价格
             current_price = self.market_analyzer.get_current_price(symbol)
 
+            # 获取交易对的实际精度信息
+            min_qty = 0.001  # 默认值
+            precision = 3    # 默认精度
+            try:
+                exchange_info = self.binance.get_futures_exchange_info(symbol=symbol)
+                if exchange_info and 'filters' in exchange_info:
+                    lot_size_filter = next((f for f in exchange_info['filters'] if f['filterType'] == 'LOT_SIZE'), None)
+                    if lot_size_filter:
+                        min_qty = float(lot_size_filter['minQty'])
+                        step_size = float(lot_size_filter['stepSize'])
+                        precision = abs(int(round(math.log10(step_size)))) if step_size != 0 else 1
+            except Exception as e:
+                self.logger.warning(f"  [WARNING] 获取交易对精度信息失败，使用默认值: {e}")
+
             # 计算开仓数量（考虑杠杆）
             position_quantity = (reinvest_amount * new_leverage) / current_price
 
+            # 使用动态获取的精度调整仓位大小
+            position_quantity = round(position_quantity, precision)
+
             # 币安最小开仓量检查
-            min_quantity = 0.001
-            if position_quantity < min_quantity:
-                self.logger.warning(f"  [WARNING] 开仓数量{position_quantity:.6f}小于最小量{min_quantity}，调整至最小量")
-                position_quantity = min_quantity
+            if position_quantity < min_qty:
+                self.logger.warning(f"  [WARNING] 开仓数量{position_quantity:.6f}小于最小量{min_qty}，调整至最小量")
+                position_quantity = min_qty
 
             self.logger.info(f"  [STEP 3] 用浮盈开新仓位（原仓位保持）...")
             self.logger.info(f"  [DATA] 新仓杠杆: {new_leverage}x")
