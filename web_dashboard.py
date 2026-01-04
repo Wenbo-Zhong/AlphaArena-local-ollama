@@ -84,7 +84,6 @@ def index():
 def get_performance():
     """获取性能数据 API - 实时从 Binance 获取"""
     try:
-        # 初始化客户端
         init_clients()
 
         # 直接从Binance获取合约账户信息
@@ -253,7 +252,6 @@ def get_system_status():
 def get_positions():
     """获取当前持仓 API - 实时从 Binance 获取"""
     try:
-        # 初始化客户端
         init_clients()
 
         # 直接从 Binance 获取实时持仓数据
@@ -369,7 +367,6 @@ def get_ai_decisions():
 def get_liquidation_warnings():
     """获取清算风险预警 API"""
     try:
-        # 初始化客户端
         init_clients()
 
         # 获取当前持仓
@@ -423,7 +420,6 @@ def background_push_thread():
     """后台线程：实时推送数据到所有连接的客户端"""
     while True:
         try:
-            # 初始化客户端
             init_clients()
 
             # 直接从Binance获取合约账户信息

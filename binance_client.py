@@ -8,9 +8,6 @@ class BinanceClient:
 
     def __init__(self, api_key: str, api_secret: str, testnet: bool = False, using_v2ray: int = 0,
                  v2ray_port: int = 10808):
-        """
-        初始化客户端
-        """
         self.client = Client(api_key, api_secret, testnet=testnet)
         self.logger = logging.getLogger(__name__)
 
@@ -24,7 +21,7 @@ class BinanceClient:
                 'https': f"https://127.0.0.1:{v2ray_port}"
             }
 
-        # 关键：强制同步一次服务器时间
+        # 强制同步服务器时间，避免因时间差导致的API调用失败 (错误码 -1021)
         try:
             self.client.futures_time()
             self.logger.info("Binance 时间同步成功")
@@ -85,9 +82,9 @@ class BinanceClient:
         return self._call(self.client.get_ticker, symbol=symbol)
 
     def get_klines(self, symbol: str, interval: str, limit: int = 100,
-                   startTime: int = None, endTime: int = None) -> List:
+                   start_time: int = None, endTime: int = None) -> List:
         return self._call(self.client.get_klines, symbol=symbol, interval=interval,
-                          limit=limit, startTime=startTime, endTime=endTime)
+                          limit=limit, startTime=start_time, end_time=endTime)
 
     def get_order_book(self, symbol: str, limit: int = 100) -> Dict:
         return self._call(self.client.get_order_book, symbol=symbol, limit=limit)

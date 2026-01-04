@@ -19,7 +19,7 @@ from risk_manager import RiskManager
 from ai_trading_engine import AITradingEngine
 from performance_tracker import PerformanceTracker
 from pro_log_formatter import ProTradingFormatter
-from roll_tracker import RollTracker  # [NEW V2.0] ROLL状态追踪器
+from roll_tracker import RollTracker  #  ROLL状态追踪器，用于跟踪滚仓次数和状态，避免过度杠杆
 from advanced_position_manager import AdvancedPositionManager  # [NEW V2.0] 高级仓位管理
 from rolling_position_manager import RollingPositionManager  # [NEW V3.0] 浮盈滚仓管理器
 
@@ -100,7 +100,7 @@ class AlphaArenaBot:
         self.ollama_max_tokens = os.getenv('OLLAMA_MAX_TOKENS', 32768)
         self.ollama_temperature = os.getenv('OLLAMA_TEMPERATURE', 0.3)
         self.ollama_api_timeout = os.getenv('OLLAMA_API_TIMEOUT', 150)
-        self.ollama_api_port = os.getenv('OLLAMA_API_TIMEOUT', 11434)
+        self.ollama_api_port = os.getenv('OLLAMA_API_PORT', 11434)
         self.ollama_model_name = os.getenv('OLLAMA_MODEL_NAME', '')
 
         # 交易配置

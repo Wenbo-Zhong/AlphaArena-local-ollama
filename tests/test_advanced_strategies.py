@@ -18,7 +18,6 @@ from advanced_position_manager import AdvancedPositionManager
 print("🧪 开始测试高级仓位管理策略...")
 print()
 
-# 初始化客户端
 binance_api_key = os.getenv('BINANCE_API_KEY')
 binance_api_secret = os.getenv('BINANCE_API_SECRET')
 use_testnet = os.getenv('BINANCE_TESTNET', 'false').lower() == 'true'

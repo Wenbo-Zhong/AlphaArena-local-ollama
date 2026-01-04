@@ -48,8 +48,8 @@ class AITradingEngine:
             roll_tracker: ROLL状态追踪器
             enable_enhanced_features: 是否启用增强功能（运行状态追踪、丰富市场数据）
         """
-        self.ollamaClient = OllamaClient(ollama_api_key, ollama_max_tokens, ollama_temperature,
-                                       ollama_api_timeout, ollama_api_port, ollama_model_name)
+        self.ollama_client = OllamaClient(ollama_api_key, ollama_max_tokens, ollama_temperature,
+                                          ollama_api_timeout, ollama_api_port, ollama_model_name)
         self.binance = binance_client
         self.market_analyzer = market_analyzer
         self.risk_manager = risk_manager
@@ -165,14 +165,14 @@ class AITradingEngine:
 
             if use_reasoner:
                 self.logger.info(f"[{symbol}] [深度分析] 调用 Ollama Model...")
-                ai_result = self.ollamaClient.analyze_with_reasoning(
+                ai_result = self.ollama_client.analyze_with_reasoning(
                     market_data=market_data,
                     account_info=account_info,
                     trade_history=self.trade_history[-10:]
                 )
             else:
                 self.logger.info(f"[{symbol}] [快速分析] Ollama Model V3.1...")
-                ai_result = self.ollamaClient.analyze_market_and_decide(
+                ai_result = self.ollama_client.analyze_market_and_decide(
                     market_data,
                     account_info,
                     self.trade_history
@@ -297,7 +297,7 @@ class AITradingEngine:
             self.logger.info(f"[{symbol}] 盈亏: ${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)")
 
             # 调用Ollama Model评估持仓
-            decision = self.ollamaClient.evaluate_position_for_closing(
+            decision = self.ollama_client.evaluate_position_for_closing(
                 position_info,
                 market_data,
                 account_info,
