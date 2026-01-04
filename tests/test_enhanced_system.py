@@ -6,7 +6,10 @@
 """
 
 import os
+import sys
 import logging
+# 添加项目根目录到导入路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 from binance_client import BinanceClient
 from market_analyzer import MarketAnalyzer

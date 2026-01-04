@@ -5,6 +5,8 @@
 
 import os
 import sys
+# 添加项目根目录到导入路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -4,6 +4,10 @@
 模拟真实持仓场景
 """
 
+import sys
+import os
+# 添加项目根目录到导入路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rolling_position_manager import RollingPositionManager
 
 def test_rolling_scenarios():
