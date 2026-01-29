@@ -39,11 +39,11 @@ class Config:
     class Ollama:
         """Ollama API 配置"""
         API_KEY = os.getenv('OLLAMA_API_KEY')
-        MAX_TOKENS = int(os.getenv('OLLAMA_MAX_TOKENS', '32768'))  # 最大令牌数
-        TEMPERATURE = float(os.getenv('OLLAMA_TEMPERATURE', '0.3'))  # 温度参数
-        API_TIMEOUT = int(os.getenv('OLLAMA_API_TIMEOUT', '150'))  # API超时时间（秒）
-        API_PORT = int(os.getenv('OLLAMA_API_PORT', '11434'))  # API端口
-        MODEL_NAME = os.getenv('OLLAMA_MODEL_NAME', '')
+        MAX_TOKENS = int(os.getenv('OLLAMA_MAX_TOKENS', '32768'))   # 最大令牌数
+        TEMPERATURE = float(os.getenv('OLLAMA_TEMPERATURE', '0.3')) # 温度参数
+        API_TIMEOUT = int(os.getenv('OLLAMA_API_TIMEOUT', '150'))   # API超时时间（秒）
+        API_PORT = int(os.getenv('OLLAMA_API_PORT', '11434'))       # API端口
+        MODEL_NAME = os.getenv('OLLAMA_MODEL_NAME', 'qwen2.5:14b-instruct-q8_0')
         
     class Risk:
         """风险管理配置"""
